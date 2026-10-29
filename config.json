@@ -13,9 +13,6 @@
     "i18n":"CN",
     "nightTheme":"dark_colorblind",
     "bottomText":"❤️ 转载文章请注明出处，谢谢！❤️",
-    "iconList":{"Blogger":"M10.7 1H5.3C3.5 1 2.1 2.4 2.1 4.2V11.8C2.1 13.6 3.5 15 5.3 15H10.7C12.5 15 13.9 13.6 13.9 11.8V5.5C13.9 4.7 13.2 4 12.4 4H11.2C10.4 4 9.8 3.3 9.8 2.5V1.7C9.8 1.3 10.2 1 10.7 1ZM5 6.2H11V7.5H5V6.2ZM5 9H11V10.3H5V9Z
-"},
-    "exlink":{"Blogger":"https://zhfou.blogspot.com"},
     "primerCSS":"<link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />",
     "blog_VERSION":"main"
 }
