@@ -10,15 +10,11 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="# 在 Hyper‑V 上运行 OpenWrt
-
-> 
-本文简单介绍如何在 Hyper‑V 上安装和配置 OpenWrt，以及将 OpenWrt 作为旁路由接管本机流量的基础过程。">
+<meta name="description" content="
+> 这里简单介绍一下如何在 Hyper-V 上安装和配置 OpenWrt，以及将依照这个方法配置的 OpenWrt 作为旁路由接管本机流量的最基本过程。">
 <meta property="og:title" content="在 Hyper‑V 上运行 OpenWrt">
-<meta property="og:description" content="# 在 Hyper‑V 上运行 OpenWrt
-
-> 
-本文简单介绍如何在 Hyper‑V 上安装和配置 OpenWrt，以及将 OpenWrt 作为旁路由接管本机流量的基础过程。">
+<meta property="og:description" content="
+> 这里简单介绍一下如何在 Hyper-V 上安装和配置 OpenWrt，以及将依照这个方法配置的 OpenWrt 作为旁路由接管本机流量的最基本过程。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://zhfou.github.io/post/zai-%20Hyper%E2%80%91V%20-shang-yun-xing-%20OpenWrt.html">
 <meta property="og:image" content="https://www.blogger.com/img/logo_blogger_40px_2x.png">
@@ -47,17 +43,7 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
     body {padding: 8px;}
     .postTitle{font-size:24px;}
 }
-.copy-feedback {
-    display: none;
-    position: absolute;
-    top: 10px;
-    right: 50px;
-    color: var(--color-fg-on-emphasis);
-    background-color: var(--color-fg-muted);
-    border-radius: 3px;
-    padding: 5px 8px;
-    font-size: 12px;
-}
+
 </style>
 
 
@@ -89,233 +75,228 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 </div>
 </div>
     <div id="content">
-<div class="markdown-body" id="postBody"><h1>在 Hyper‑V 上运行 OpenWrt</h1>
-<blockquote>
+<div class="markdown-body" id="postBody"><blockquote>
+<p>这里简单介绍一下如何在 Hyper-V 上安装和配置 OpenWrt，以及将依照这个方法配置的 OpenWrt 作为旁路由接管本机流量的最基本过程。一般来讲，这些步骤在 VMware WorkStation / VMware EXSi / Proxmox VE / 其它 kvm 等虚拟化平台的执行应该是相通的。如果你想将 OpenWrt 虚拟机作为一个软路由使用，那么本文应该也会对你有所帮助。</p>
 </blockquote>
-<p>本文简单介绍如何在 Hyper‑V 上安装和配置 OpenWrt，以及将 OpenWrt 作为旁路由接管本机流量的基础过程。<br>
-这些步骤在 VMware WorkStation / VMware EXSi / Proxmox VE / 其他 KVM 虚拟化平台大体相通。如果你希望把 OpenWrt 虚拟机用作软路由，本文同样具备参考价值。</p>
 <h2>准备工作</h2>
+<p>确保你需要安装 OpenWrt 的电脑支持 Hyper-V 功能，可以跟随稍后的步骤以确认。<br>
+部分操作可能需要访问国际网络，所以可能需要一个霍格沃兹环境(笑)来下载所需的工具。</p>
+<h2>第一步：开启 Hyper-V 功能</h2>
+<p>Hyper-V 是微软为 Windows 专业版/企业版和 Windows Server 系列操作系统所设计的一套虚拟化平台和虚拟机监控程序。其应该可以与较新版本的 VMware Workstation 等桌面端虚拟化平台共存。</p>
+<p>既然是要在 Hyper-V 上运行 OpenWrt，那么首先我们要考虑的问题就有两个：</p>
 <ol>
-<li>确认电脑支持 Hyper‑V 功能，后文会介绍确认方法。</li>
-<li>部分下载操作可能需要访问国际网络。</li>
+<li>我的电脑能不能打开 Hyper-V?</li>
+<li>如何打开 Hyper-V?</li>
 </ol>
-<h2>第一步：开启 Hyper‑V 功能</h2>
-<p>Hyper‑V 是微软面向 Windows 专业版/企业版、Windows Server 的虚拟化平台，可与新版 VMware Workstation 共存。</p>
-<p>需要确认两件事：</p>
+<p>那么，首先我们来确认一下能不能开 Hyper-V 吧。</p>
+<h3>确认能否启用 Hyper-V</h3>
+<p>确认能否开启 Hyper-V 实际上就是确认系统版本是否符合要求。一般来说，确认系统版本有以下几种方式可用(示例如下)：</p>
 <ol>
-<li>本机是否可以启用 Hyper‑V</li>
-<li>如何启用 Hyper‑V</li>
+<li>Windows Vista&amp; Windows 7&amp; Windows 8.x: 控制面板 -&gt; 系统与安全 -&gt; 系统 / Windows 10: “设置”应用 -&gt; 系统 -&gt; 关于 / Windows 11: “设置”应用 -&gt; 系统 -&gt; 系统信息</li>
 </ol>
-<h3>确认能否启用 Hyper‑V</h3>
-<p>本质是确认 Windows 系统版本。查看版本方式：</p>
-<ol>
-<li>Windows Vista /7 /8.x：控制面板 → 系统与安全 → 系统<br>
-Windows10：设置 → 系统 → 关于<br>
-Windows11：设置 → 系统 → 系统信息</li>
-<li>Win+R，执行 <code class="notranslate">winver</code></li>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/403d0107c6069dab44444006da4aa5b853fe358eddf98793beaf4825fad50880/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f765838314f78476f7356797555364a2e706e67"><img src="https://camo.githubusercontent.com/403d0107c6069dab44444006da4aa5b853fe358eddf98793beaf4825fad50880/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f765838314f78476f7356797555364a2e706e67" alt="Windows 10 关于" data-canonical-src="https://s2.loli.net/2024/03/03/vX81OxGosVyuU6J.png" style="max-width: 100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/7842641deb8d5a6da8343af547edba38094c9f6e3b59e87bcc8de5a66e844281/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f4d775945786c6735727954716a49412e706e67"><img src="https://camo.githubusercontent.com/7842641deb8d5a6da8343af547edba38094c9f6e3b59e87bcc8de5a66e844281/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f4d775945786c6735727954716a49412e706e67" alt="Windows 11 系统信息" data-canonical-src="https://s2.loli.net/2024/03/03/MwYExlg5ryTqjIA.png" style="max-width: 100%;"></a></p>
+<ol start="2">
+<li>Win + R -&gt; winve</li>
 </ol>
-<blockquote>
-<p>✅ 可启用：专业版、专业工作站版、企业版、教育版、Server 版本<br>
-❌ 家庭版/家庭中文版：本文流程不适用，可自行搜索家庭版开启 Hyper‑V 的教程。</p>
-</blockquote>
-<h3>启用 Hyper‑V</h3>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/f4a7f7aee43fcd3348a4d4867469dd58e1a572877a0cb64a14ffb612ae0a9cb0/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f57354866736b6a477056634e536c372e706e67"><img src="https://camo.githubusercontent.com/f4a7f7aee43fcd3348a4d4867469dd58e1a572877a0cb64a14ffb612ae0a9cb0/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f57354866736b6a477056634e536c372e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/03/W5HfskjGpVcNSl7.png" style="max-width: 100%;"></a></p>
+<p>如果你的系统版本为专业版，专业工作站版，企业版，教育版或 Server 版本，那么恭喜你，可以进行下一步了。如果你的系统版本为家庭版，家庭中文版等版本，那么本文可能不适用于你。你可以通过一些方式来升级你的系统版本，或者可以采用别的方式开启 Hyper-V。家庭版等系统开启 Hyper-V 的方式不在本文说明范围之内，请各位自行查阅相关教程。</p>
+<h3>启用 Hyper-V</h3>
+<p>接下来，我们需要进入控制面板：Win + R -&gt; control -&gt; 程序 -&gt; 启用或关闭 Windows 功能，然后需要勾选如下几项：</p>
 <ol>
-<li><code class="notranslate">Win+R</code> 输入 <code class="notranslate">control</code> 打开控制面板 → 程序 → 启用或关闭 Windows 功能</li>
-<li>勾选以下三项：
-<ul>
-<li>Hyper‑V</li>
+<li>Hyper-V</li>
 <li>Windows 虚拟机监控程序平台</li>
-<li>虚拟机平台&gt;</li>
-</ul>
-<blockquote>
-<p>只需保证以上三项勾选，其余选项不必完全一致。</p>
-</blockquote>
-</li>
-<li>点击确定等待安装，<strong>完成后务必重启电脑</strong>，后续步骤必须重启后继续。</li>
+<li>虚拟机平台</li>
 </ol>
+<p>勾选完成后，你的窗口大致应该是这样的：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/6b0242a0c483f3742e66109c6ceb4244a1722c2e64a29c684c5cf99742a00924/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f74767149397372513156504b326a592e706e67"><img src="https://camo.githubusercontent.com/6b0242a0c483f3742e66109c6ceb4244a1722c2e64a29c684c5cf99742a00924/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30332f74767149397372513156504b326a592e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/03/tvqI9srQ1VPK2jY.png" style="max-width: 100%;"></a></p>
+<p>只需要保证上述三项勾选即可，不必与完全一致。</p>
+<p>勾选完成后，点击“确定”，稍等片刻，安装完成后可以按需选择是否重启。烦请注意：下述第三步操作必须在启用 Hyper-V 并重启后继续进行。</p>
 <h2>第二步：下载 OpenWrt 硬盘镜像并转换格式</h2>
 <h3>下载 OpenWrt 镜像</h3>
-<p>前往 OpenWrt 官网下载稳定版镜像，选择架构：<code class="notranslate">x86‑64</code>。<br>
-存在两类镜像：</p>
-<ul>
-<li><code class="notranslate">generic‑ext4‑x.img</code>：全部修改持久化保存</li>
-<li><code class="notranslate">generic‑squashfs‑x.img</code>：修改不持久化，重启恢复默认，便于配置出错重置，<strong>本文推荐使用</strong></li>
-</ul>
-<p>下载时二选一：</p>
-<ul>
-<li><code class="notranslate">generic‑x‑combined.img.gz</code>：传统 BIOS 引导</li>
-<li><code class="notranslate">generic‑x‑combined‑efi.img.gz</code>：UEFI 引导</li>
-</ul>
-<blockquote>
-<p><g-emoji class="g-emoji" alias="warning">⚠️</g-emoji> 记住镜像引导方式，直接决定 Hyper‑V 虚拟机的世代。</p>
-</blockquote>
-<blockquote>
-<p>作者使用 Github <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/DHDAXCW/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/DHDAXCW">@DHDAXCW</a> 编译的 <code class="notranslate">OpenWrt_x86_x64</code>，该镜像同时支持 BIOS+UEFI，预置常用插件，可以在其 Release 页面下载。<br>
-使用第三方镜像务必确认其引导方式。</p>
-</blockquote>
+<p>跟随上一步的步骤，相信各位已经成功启用了 Hyper-V 功能。那么，为了创建一个 OpenWrt 的虚拟机，接下来我们需要获得 OpenWrt 的镜像。</p>
+<p>我们可以通过 <a href="https://download.openwrt.org" rel="nofollow">OpenWrt 官网</a> 来下载最新的稳定版镜像。在选择一个版本后，请务必选择 x86 -&gt; 64 ，然后我们可以发现这里有两个版本的镜像：generic-ext4-x.img 和 generic-squashfs-x.img</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/7913c25cea766e3d47fa96f8c78bc52c9616e32d054befd30a77c8e023bf7c36/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30342f4f426779764e736b707531713964492e706e67"><img src="https://camo.githubusercontent.com/7913c25cea766e3d47fa96f8c78bc52c9616e32d054befd30a77c8e023bf7c36/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30342f4f426779764e736b707531713964492e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/04/OBgyvNskpu1q9dI.png" style="max-width: 100%;"></a></p>
+<p>这两个镜像的唯一区别在于根文件系统。ext4 文件系统镜像可以对任何改动都进行持久化存储，而 squashfs 一般情况下对文件系统的改动无法持久化，每次重启都会重置更改，但便于从错误配置中重置。这里推荐使用 generic-squashfs-x.img 作为下一步使用的镜像。</p>
+<p>无论选择何种文件系统的镜像，OpenWrt 都给了我们三个选项。这里请选择 generic-x-combined.img.gz 或者 generic-x-combined-efi.img.gz。前一镜像的引导方式是传统 BIOS 引导，后一镜像则为 UEFI 引导。</p>
+<p>请记住这里你下载镜像的引导方式，因为这将直接决定接下来要创建的虚拟机的世代类型/引导方式。</p>
+<p>使用的镜像来自 Github 上 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/DHDAXCW/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/DHDAXCW">@DHDAXCW</a> 编译的 OpenWrt_x86_x64 镜像。这个镜像的一大特点就是其预置了一些使用过程中可能需要的插件，可以前往仓库的 Release 以下载镜像。请注意：通过这种方式获得的镜像同时支持 BIOS 和 UEFI 两种引导方式，使用时请按需选择。</p>
+<p>如果通过其他方式获得镜像，请预先确认其引导方式。</p>
 <h3>转换镜像格式至 .vhdx</h3>
-<p>下载解压后得到 <code class="notranslate">.img</code>，Hyper‑V 不能直接识别，需要转为 <code class="notranslate">.vhdx</code>，两种方案。</p>
-<h4>方案一：使用 qemu‑img</h4>
-<ol>
-<li>下载 Windows 版 QEMU，安装时仅勾选 <code class="notranslate">Tools</code> 和 <code class="notranslate">DLL Library</code>（只需要 qemu‑img 工具）。</li>
-</ol>
-<blockquote>
-<p>注意：安装程序不一定自动加入系统环境变量，命令行需要 cd 到安装目录，或者手动添加环境变量。</p>
-</blockquote>
-<ol start="2">
-<li>打开 PowerShell / Windows 终端，cd 到镜像所在目录。</li>
-</ol>
-<pre class="notranslate"><code class="notranslate">qemu-img convert -p -f raw -O vhdx your_image.img your_image.vhdx
-</code></pre>
-<p>执行完成即得到 Hyper‑V 可用的 vhdx 文件。</p>
-<h4>方案二：StarWind V2V Converter（图形界面，适合不熟悉命令行）</h4>
-<ol>
-<li>下载安装 StarWind V2V Converter。</li>
-<li>选择源：<code class="notranslate">Local File</code>，选中你的 <code class="notranslate">.img</code>。</li>
-<li>目标：<code class="notranslate">Local File</code>，格式选择 <code class="notranslate">VHDX Growable Image</code> / <code class="notranslate">VHDX Pre‑allocated</code>，执行转换。</li>
-</ol>
-<p>转换完成后把 <code class="notranslate">.vhdx</code> 文件放到便于访问的目录。</p>
-<h2>第三步：创建并配置 Hyper‑V 虚拟机</h2>
+<p>通过上述办法获得镜像(可能需要解压)之后，我们大概率会得到一个 .img 格式的镜像文件，而 Hyper-V 不能直接识别和使用这个格式的镜像，所以我们需要把 .img 格式转换为 Hyper-V 可以识别的 .vhd 或 .vhdx 格式的镜像文件。</p>
+<p>Windows 平台下，我们有两种转换方式：</p>
+<h3>其一：使用 qemu-img</h3>
+<p>我们可以在<a href="https://qemu.weilnetz.de/w64/" rel="nofollow">Qemu for Windows build</a> 页面下载最新版本或你所需要版本的 qemu 安装器，一般来说，最新版本的 .exe 安装程序应该位于文件页面接近底端的位置。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/5bbff21141f6cd49f05d3e096c3e6d39b3e0eba99c8700f2c0d25d7900633c60/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30352f4770644a38784363416151714267482e706e67"><img src="https://camo.githubusercontent.com/5bbff21141f6cd49f05d3e096c3e6d39b3e0eba99c8700f2c0d25d7900633c60/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30352f4770644a38784363416151714267482e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/05/GpdJ8xCcAaQqBgH.png" style="max-width: 100%;"></a></p>
+<p>Qemu 安装程序也可以在本站的 Github Release 下载：<a href="https://github.com/RinLin-NYA/RinLin-NYA.github.io/releases/tag/1">Github Releases</a></p>
+<p>下载完成后，进入安装程序，选择语言后会进入组件选择页面。这里可以按需选择，如果你以后想使用 qemu 进行虚拟，那么保持默认(全部勾选)即可。这里我们只需要它的 qemu-img 工具，所以我们只勾选 Tools 和 DLL Library 两项。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/2d542d1ea35b620e6e2b57ce9e50e1a941ea80bed50b12b530ea202133eb1a47/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30352f46366b50564e5a527673437747324c2e706e67"><img src="https://camo.githubusercontent.com/2d542d1ea35b620e6e2b57ce9e50e1a941ea80bed50b12b530ea202133eb1a47/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30352f46366b50564e5a527673437747324c2e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/05/F6kPVNZRvsCwG2L.png" style="max-width: 100%;"></a></p>
+<p>接下来一路默认，安装完成后即可关闭安装程序。注意：安装程序可能不会默认将其安装目录添加进环境变量中，所以接下来的命令可能需要你自行定位至安装目录运行，或者将其添加进你的环境变量。</p>
+<p>然后我们需要打开终端应用。Windows 10 可以使用 PowerShell，或者使用命令提示符。Windows 11 还可以使用自带的“终端”应用(Windows 10 用户也可以在 Microsoft Store 中下载)。这里使用的是 <a href="https://github.com/Eugeny/tabby">Tabby Terminal</a>，各位可以依据使用习惯自行决定。</p>
+<p>使用 cd 命令定位到你下载镜像的存储位置：</p>
+<p><code class="notranslate">cd your_image_dir/</code> (如果使用命令提示符且镜像位置所在盘符与默认盘符不一致，请先切换盘符)</p>
+<p>然后请执行如下命令：</p>
+<p><code class="notranslate">qemu-img convert -p -f raw -O vhdx your_image.img your_image.vhdx</code></p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/2d542d1ea35b620e6e2b57ce9e50e1a941ea80bed50b12b530ea202133eb1a47/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30352f46366b50564e5a527673437747324c2e706e67"><img src="https://camo.githubusercontent.com/2d542d1ea35b620e6e2b57ce9e50e1a941ea80bed50b12b530ea202133eb1a47/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30352f46366b50564e5a527673437747324c2e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/05/F6kPVNZRvsCwG2L.png" style="max-width: 100%;"></a></p>
+<p>由图所示，命令不会输出任何结果，但实际上我们已经完成了转换。</p>
+<h3>其二：使用 StarWind V2V Converter</h3>
+<p>StarWind V2V Converter 是一款由 Starwind 出品的商业软件，其通过图形化界面以简化镜像转换流程。对于 PowerShell 等命令行操作不熟悉的用户，建议使用此方式。</p>
+<p>我们可以进入 StarWind 的官网下载，但是其下载需要填写邮箱。这里为了简化下载流程，将该软件的安装程序上传至了本站的 <a href="https://github.com/RinLin-NYA/RinLin-NYA.github.io/releases/tag/1">Github Releases</a>，可以按需下载。</p>
+<p>下载完成后，进入安装程序，一路默认即可。安装完成后，进入 StarWind V2V Converter，在”Select the location of the img to convert”页面中，选择”Local File”，然后在下一页中选择你下载的镜像，下一步在”Select the location of the destination image”页面选择”Local File”，在”Select destination image format”页面中选择”VHD/VHDX”,选择”VHDX Growable Image”或者”VHDX Pre-allocated”，转换即可。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/1562767f930a0fdff11cef21c4bc44d818b8b6e243ffe4d91e00c1eac49b023c/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f6d363969477a72674a3375667046712e706e67"><img src="https://camo.githubusercontent.com/1562767f930a0fdff11cef21c4bc44d818b8b6e243ffe4d91e00c1eac49b023c/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f6d363969477a72674a3375667046712e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/m69iGzrgJ3ufpFq.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/6edaa978a2ed4da6a96a911be5f3140f11397ac9187169a7698b73d7d547e150/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f547477375047574151624b715556442e706e67"><img src="https://camo.githubusercontent.com/6edaa978a2ed4da6a96a911be5f3140f11397ac9187169a7698b73d7d547e150/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f547477375047574151624b715556442e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/Ttw7PGWAQbKqUVD.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/990af5cb7d9d72d464373c268d16f31807ff1e96a2489331eeca465905136bce/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f58745672624a44385a54426b396e462e706e67"><img src="https://camo.githubusercontent.com/990af5cb7d9d72d464373c268d16f31807ff1e96a2489331eeca465905136bce/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f58745672624a44385a54426b396e462e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/XtVrbJD8ZTBk9nF.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/9630ee4532f30deb0008e5d2d1ad4e27c502ba84c80681f344a8a2e5dd081c3e/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f58647a624a397572496d56474e4c6e2e706e67"><img src="https://camo.githubusercontent.com/9630ee4532f30deb0008e5d2d1ad4e27c502ba84c80681f344a8a2e5dd081c3e/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f58647a624a397572496d56474e4c6e2e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/XdzbJ9urImVGNLn.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/ad18db5c44103df35566c3b1382dc97f7a4f478c6993b014e18c44649586526d/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f6956724f703661593143686249446b2e706e67"><img src="https://camo.githubusercontent.com/ad18db5c44103df35566c3b1382dc97f7a4f478c6993b014e18c44649586526d/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f6956724f703661593143686249446b2e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/iVrOp6aY1ChbIDk.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/ec25b4e1b7e5820e408c50ba302764a958a990d8b441821a09d1ca97b0058bd8/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f48354a58734c394943667034675a4d2e706e67"><img src="https://camo.githubusercontent.com/ec25b4e1b7e5820e408c50ba302764a958a990d8b441821a09d1ca97b0058bd8/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f48354a58734c394943667034675a4d2e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/H5JXsL9ICfp4gZM.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/6250b448fcb26c78670567a0246cc4ba369fd5b791a83d20600409494ea4b705/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f4861704a6a58326e717a52506d546b2e706e67"><img src="https://camo.githubusercontent.com/6250b448fcb26c78670567a0246cc4ba369fd5b791a83d20600409494ea4b705/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30362f4861704a6a58326e717a52506d546b2e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/06/HapJjX2nqzRPmTk.png" style="max-width: 100%;"></a></p>
+<p>至此，我们已经完成了 OpenWrt 镜像的下载和格式转换。建议将转换后的 .vhdx 镜像更换一个位置。</p>
+<p>现在可以着手配置 Hyper-V 虚拟机了。</p>
+<h2>第三步：创建并配置 Hyper-V 虚拟机</h2>
+<p>通过前边的两步，我们已经完成了所有的先期准备工作：开启 Hyper-V 和准备 OpenWrt 硬盘镜像文件。接下来，我们将正式进入创建 Hyper-V 虚拟机的流程。</p>
 <h3>配置虚拟网络交换机</h3>
-<h4>虚拟交换机三种类型</h4>
+<p>创建虚拟网络适配器前，我们首先需要了解一下 Hyper-V 提供了哪些类型的交换机。</p>
+<h3>了解虚拟网络交换机类型</h3>
+<p>Hyper-V 一共提供了三种类型的虚拟网络交换机：</p>
 <ol>
-<li><strong>内部虚拟交换机</strong>：虚拟机 ↔ 物理主机通信；默认<strong>不能访问外网</strong>，适合管理虚拟机。</li>
-<li><strong>外部虚拟交换机</strong>：绑定物理网卡，让虚拟机直接访问外网，等同于给虚拟机一张物理网卡。</li>
-<li><strong>专用虚拟交换机</strong>：仅虚拟机之间互通，不能和物理主机、外网通信。</li>
+<li>内部虚拟交换机：供虚拟机和物理机之间通讯的虚拟网络交换机。这种虚拟交换机可用于物理机和虚拟机的双向连接(例如，如果你希望从物理机连接到虚拟机的 ssh 或者远程桌面，那么这种虚拟交换机将很有用)。请注意：这种虚拟交换机通常情况下不可用于让虚拟机联网。</li>
+<li>外部虚拟交换机：将物理机的网卡直接供虚拟机使用的虚拟网络交换机。这种虚拟交换机可以直接为虚拟机提供网络连接。这种虚拟交换机的作用相当于为一台物理机装载一张物理网卡。</li>
+<li>专用虚拟交换机：供某一物理机上的所有虚拟机之间相互通讯的虚拟网络交换机。这种虚拟交换机只能用于各个虚拟机之间的通讯，无法同物理机或外部网络通讯。</li>
 </ol>
-<blockquote>
-<p>本文目标：OpenWrt 做 Windows 旁路由：需要 <strong>内部交换机（管理） + 外部交换机（WAN 外网）</strong>。<br>
-如果是物理软路由场景，则创建两个外部交换机。</p>
-</blockquote>
-<h4>创建虚拟网络交换机</h4>
-<ol>
-<li>打开「Hyper‑V 管理器」，连接本地计算机。</li>
-<li>打开「虚拟交换机管理器」。</li>
-<li>新建两个交换机：
-<ul>
-<li><strong>内部虚拟交换机</strong>：全部保持默认。</li>
-<li><strong>外部虚拟交换机</strong>：绑定你本机正在上网的物理网卡（无线网卡/有线网卡，看你实际上网方式）。</li>
-</ul>
-</li>
-<li>点击应用，等待创建完成。</li>
-</ol>
-<h3>创建 Hyper‑V 虚拟机</h3>
-<ol>
-<li>Hyper‑V 管理器 → 新建 → 虚拟机，打开向导。</li>
-<li>填写虚拟机名称，选择存储位置。</li>
-<li><strong>指定代数</strong>：
-<ul>
-<li>BIOS 引导镜像 → 第一代；</li>
-<li>UEFI 引导镜像 → 第二代（推荐）。</li>
-</ul>
-</li>
-<li>内存：至少 <code class="notranslate">1024MB</code>，示例分配 <code class="notranslate">1536MB</code>，<strong>关闭动态内存</strong>。</li>
-<li>配置网络：先选择刚才创建的<strong>内部虚拟交换机</strong>。</li>
-<li>连接虚拟硬盘：选择「使用现有虚拟硬盘」，选中转换好的 <code class="notranslate">.vhdx</code>。</li>
-<li>确认摘要，点击完成创建虚拟机。</li>
-</ol>
-<h4>修改虚拟机额外设置</h4>
-<ol>
-<li>右键虚拟机 → 设置 → 添加硬件 → 网络适配器，添加刚才的<strong>外部虚拟交换机</strong>。</li>
-<li>选中新增的外部网卡 → 展开高级功能 → <strong>勾选启用 MAC 地址欺骗</strong>，应用。</li>
-<li>切换到「安全」页面，<strong>取消勾选启用安全启动</strong>，否则 OpenWrt 无法引导。</li>
-</ol>
-<p>至此虚拟机开机前配置全部完成。</p>
+<p>由于本文配置 OpenWrt 的目的是“将其配置为旁路由以接管本机流量”,所以我们要设置的虚拟交换机会包含一个内部虚拟交换机(用于将物理机的流量传输至 OpenWrt 虚拟机，并实现对 OpenWrt 的控制)和一个外部虚拟交换机(用于为 OpenWrt 虚拟机提供外部网络连接)。如果你配置 OpenWrt 的目的是将其作为与下游网络设备直接连接的软路由，请创建两个外部虚拟交换机。</p>
+<h3>创建虚拟网络交换机</h3>
+<p>我们打开“Hyper-V 管理器”，选择“连接到服务器”，选择“本地计算机”以连接到物理机。然后，请打开“虚拟交换机管理器”。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/b7332818dd233e245cb2b15991ce5588e82255dfa5c3fa140be51cedb96d6539/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f6e314a42704344576b4839364158662e706e67"><img src="https://camo.githubusercontent.com/b7332818dd233e245cb2b15991ce5588e82255dfa5c3fa140be51cedb96d6539/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f6e314a42704344576b4839364158662e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/07/n1JBpCDWkH96AXf.png" style="max-width: 100%;"></a></p>
+<p>打开“虚拟交换机管理器”，我们需要创建两个虚拟网络交换机，名称可以任取。其中一个应该为外部虚拟交换机，另一个则应该为内部虚拟交换机。</p>
+<p>创建内部虚拟交换机时，所有设置保持默认即可。创建外部虚拟交换机时，请注意：外部虚拟交换机所绑定的物理网卡应为你物理机联网时使用的物理网卡。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/d625f9c92e7a03e85f9c7532dae7666d0dc804298b5276d1f0cc0c0c2e7bef43/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f584a684d546e36784b75526d4e4c662e706e67"><img src="https://camo.githubusercontent.com/d625f9c92e7a03e85f9c7532dae7666d0dc804298b5276d1f0cc0c0c2e7bef43/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f584a684d546e36784b75526d4e4c662e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/07/XJhMTn6xKuRmNLf.png" style="max-width: 100%;"></a><br>
+<a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/8e1c5c64e7eb6514d8e365670631080a79dc4c318507a6929c36957140a134a4/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f6942553278725166376c4448366f712e706e67"><img src="https://camo.githubusercontent.com/8e1c5c64e7eb6514d8e365670631080a79dc4c318507a6929c36957140a134a4/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f6942553278725166376c4448366f712e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/07/iBU2xrQf7lDH6oq.png" style="max-width: 100%;"></a></p>
+<p>上方蓝框位置即为要更改的选项。的联网方式是 WLAN，所以我将外部虚拟交换机绑定了我的无线网卡。各位需要依据自己联网的情况选择绑定网卡。</p>
+<p>确认配置无误后，点击“应用”，等待创建完成后，本步就完成了。我们已经有了两个可用的虚拟网络交换机，可以开始正式进入创建虚拟机流程了。</p>
+<h3>创建 Hyper-V 虚拟机</h3>
+<p>回到 Hyper-V 管理器，点击“新建” -&gt; 虚拟机，进入新建虚拟机向导。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/7255bbd78da4d60e8a6a94bb33d5685e5ea090ee6a626667058f57fbd10c156a/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f5a6967776d59506a6c496b445264652e706e67"><img src="https://camo.githubusercontent.com/7255bbd78da4d60e8a6a94bb33d5685e5ea090ee6a626667058f57fbd10c156a/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f5a6967776d59506a6c496b445264652e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/07/ZigwmYPjlIkDRde.png" style="max-width: 100%;"></a></p>
+<p>的镜像支持 UEFI 引导方式，所以我选择以“第二代”作为我虚拟机的世代类型。</p>
+<p>内存分配建议不少于 1024 Mb，这里为其分配了 1536 Mb，建议关闭勾选“为此虚拟机使用动态内存”</p>
+<p>“配置网络”页面中，我们只能选择其中一个网络适配器。这里建议优先选择我们的内部虚拟交换机。</p>
+<p>“连接虚拟硬盘”页面中，我们选择蓝框所示“使用现有虚拟硬盘”，找到我们先前转换好的 .vhdx 虚拟硬盘文件，选择它。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/324bdd9b8704334aa43486da4a7f544c1653f4c4da9b4e7990ce6afbafd3cebe/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f3559694b7872396d36646338716e6b2e706e67"><img src="https://camo.githubusercontent.com/324bdd9b8704334aa43486da4a7f544c1653f4c4da9b4e7990ce6afbafd3cebe/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f3559694b7872396d36646338716e6b2e706e67" alt="连接虚拟硬盘" data-canonical-src="https://s2.loli.net/2024/03/07/5YiKxr9m6dc8qnk.png" style="max-width: 100%;"></a></p>
+<p>以上所有步骤完成后，可以进入“摘要”，确认信息无误后，点击“完成”，等待虚拟机创建完成。</p>
+<p>创建完成后，回到“Hyper-V 管理器”，找到我们刚才创建的虚拟机，在右键后的下拉菜单中进入“设置”。进入“设置”后，选择“添加硬件”，类型选择网络适配器，再将我们之前配置的外部虚拟交换机添加进虚拟机中。</p>
+<p>回到我们刚刚分配的外部虚拟交换机，点开“+”号，进入高级功能，勾选“启用 MAC 地址欺骗”，应用设置即可。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/ff998699bcb16a08837df806ca3a71104b2f14692f59dbf991100bd8addcd518/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f4b53567136726552686279694839572e706e67"><img src="https://camo.githubusercontent.com/ff998699bcb16a08837df806ca3a71104b2f14692f59dbf991100bd8addcd518/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f4b53567136726552686279694839572e706e67" alt="网络适配器 高级功能" data-canonical-src="https://s2.loli.net/2024/03/07/KSVq6reRhbyiH9W.png" style="max-width: 100%;"></a></p>
+<p>然后我们进入左侧的“安全”页面，取消勾选“启用安全启动”，然后应用，否则 Hyper-V 会拒绝引导 OpenWrt。</p>
+<p>到这里，我们已经完成了对这一 Hyper-V 虚拟机在初次开机之前的全部配置。</p>
 <h2>第四步：配置 OpenWrt 虚拟机</h2>
+<p>经过前边的几个步骤，我们已经完成了开启虚拟机前的所有前置步骤，接下来我们就可以正式启动虚拟机，进入 OpenWrt 的世界了。</p>
+<p>打开虚拟机之前，我们需要打开终端，执行命令：ipconfig 查看网卡信息。请找到你当前联网网卡的 IP 地址。</p>
+<p>由于我们已经将联网网卡分配到了外部虚拟交换机上，所以我们也可以查看外部虚拟交换机的信息以获得 IP 地址。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/943b4b1936fda653a3c3cd86f3f5406b77ca8f27dcb5b0aceaee37c80c6d6c13/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f71754c6448554361664d62474e36632e706e67"><img src="https://camo.githubusercontent.com/943b4b1936fda653a3c3cd86f3f5406b77ca8f27dcb5b0aceaee37c80c6d6c13/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f71754c6448554361664d62474e36632e706e67" alt="ipconfig" data-canonical-src="https://s2.loli.net/2024/03/07/quLdHUCafMbGN6c.png" style="max-width: 100%;"></a></p>
+<p>可以看到，我们外部虚拟交换机的 IP 地址是 192.168.31.61，那么我们可以推知当前网络的网段为 192.168.31.*。请记住各位通过这种方式获得的网段，我们接下来的配置将会用到这一网段。同时也请记住这里的默认网关。</p>
+<h3>虚拟机中的配置</h3>
+<p>进入“Hyper-V 管理器”，选择我们刚才配置完毕的虚拟机，点击“连接”以启动虚拟机连接程序。点击“启动”就可以开机了。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/52ea7d490525eaae977bb83e2de374abfbc6876abed2c8fc2fc20cabf85d75c4/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f5a6934366e46566c78416d4a6259482e706e67"><img src="https://camo.githubusercontent.com/52ea7d490525eaae977bb83e2de374abfbc6876abed2c8fc2fc20cabf85d75c4/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f5a6934366e46566c78416d4a6259482e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/07/Zi46nFVlxAmJbYH.png" style="max-width: 100%;"></a></p>
+<p>启动开始后请稍等约 30 秒时间，时间到后我们可以按下 Enter 键进入内置 tty 终端。</p>
+<p>进入 tty 终端后，输入命令：vim /etc/config/network，然后我们就可以看到我们的网卡已经被分配了设备名称和 IP 地址。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/b4b620f5ea967dbe14faaca05ebbc5358f50b55911ffb7d02884108d922cc57a/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f7147644231635677733534664e746a2e706e67"><img src="https://camo.githubusercontent.com/b4b620f5ea967dbe14faaca05ebbc5358f50b55911ffb7d02884108d922cc57a/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f7147644231635677733534664e746a2e706e67" alt="vim /etc/config/network" data-canonical-src="https://s2.loli.net/2024/03/07/qGdB1cVws54fNtj.png" style="max-width: 100%;"></a></p>
+<p>我们要改动的部分，是蓝框中的红框部分，即 lan 网口的静态 IP 地址。按下”i”键进入 vim 的编辑模式，然后定位到红框位置，即行 option ipaddr '192.168.11.1'处，将这个 IP 地址更改为任意一个内网 IP 地址，这里我们使用 192.168.35.1。</p>
+<p>更改后的效果应该如下图所示：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/5e9eeff420cefb28ee05c1fe759bf3796227653826e0db13daf6e1199b4ecb35/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f3155626c664e58706a6837394149532e706e67"><img src="https://camo.githubusercontent.com/5e9eeff420cefb28ee05c1fe759bf3796227653826e0db13daf6e1199b4ecb35/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f3155626c664e58706a6837394149532e706e67" alt="更改配置后的效果" data-canonical-src="https://s2.loli.net/2024/03/07/1UblfNXpjh79AIS.png" style="max-width: 100%;"></a></p>
+<p>然后，按下 esc 键，键入:wq 以退出 vim。为了应用设置，我们需要在终端执行以下命令：</p>
+<p><code class="notranslate">service network reload</code></p>
+<p>命令执行完成后，我们的新网络配置应该已经生效了。此时我们可以前往浏览器访问刚才设置好的静态 IP 地址，确认能否进入 OpenWrt 的后台管理页面。如果能够进入，那么我们的配置就已经完成。否则，可能需要检查网络配置是否正确，以及网段是否与物理网卡网段一致。</p>
+<h3>浏览器中的配置</h3>
+<p>打开浏览器，在地址栏输入我们刚才配置的静态 IP 地址以进入 OpenWrt 的后台管理页面。默认用户名为 root ，密码默认为 password。建议在配置完成后更改 root 的密码。</p>
+<p>如果没有问题，成功登录后，OpenWrt 应该会默认展示当前虚拟机的状态。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/ce53db602cdf4e769a17be41242674ad29dbeb2ae1ce19232b690d6061228e05/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f316a6d395977656650475a745132382e706e67"><img src="https://camo.githubusercontent.com/ce53db602cdf4e769a17be41242674ad29dbeb2ae1ce19232b690d6061228e05/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30372f316a6d395977656650475a745132382e706e67" alt="OpenWrt 状态" data-canonical-src="https://s2.loli.net/2024/03/07/1jm9YwefPGZtQ28.png" style="max-width: 100%;"></a></p>
+<p>接下来我们需要进入“网络” -&gt; 接口，对现有的 wan 口进行配置。以下的配置，如果我们只需要联网即可，那么 wan 口的设置可以保持默认。如果我们希望为 OpenWrt 虚拟机赋予一个静态 IP 地址，那么我们需要更改的配置如下：</p>
 <ol>
-<li>Windows 打开终端执行</li>
+<li>切换协议类型为“静态地址”。</li>
+<li>新增 IPv4 地址。我们可以为 OpenWrt 分配一个静态 IP 地址。这里设置为 192.168.31.70</li>
+<li>新增 IPv4 网关。网关地址应该和主机物理网卡的默认网关一致，主机的默认网关可以参照本章节最开始的部分获得。的网关地址为 192.168.31.229，所以这里我填入此项。</li>
+<li>新增 IPv4 广播地址。广播地址一般是当前网络网段的 .255 位。这里的广播地址设置为 192.168.31.255。</li>
+<li>设置自定义 DNS 服务器：此项可以让 OpenWrt 使用独立的 DNS 服务器配置。也可以不设置。这里推荐设置为主服务器地址 8.8.8.8，副服务器地址 8.8.4.4 (Google Public DNS Server)。</li>
+<li>设置子网掩码为 255.255.255.0。</li>
+<li>勾选 DHCP 设置的“忽略此接口”选项。</li>
 </ol>
-<pre class="notranslate"><code class="notranslate">ipconfig
-</code></pre>
-<p>记录物理网卡/外部虚拟交换机的 IP、网段、默认网关。示例网段：<code class="notranslate">192.168.31.*</code>。</p>
-<h3>虚拟机内终端配置</h3>
+<p>对应到我们要在网页上修改的项目，应该是如下蓝框所示：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/18c404b0e688251fddb9733d732f762f9e79beda7315d35218bb9b3fba8564f1/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f4d69487a7343365332414e6a6235712e706e67"><img src="https://camo.githubusercontent.com/18c404b0e688251fddb9733d732f762f9e79beda7315d35218bb9b3fba8564f1/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f4d69487a7343365332414e6a6235712e706e67" alt="OpenWrt wan 口配置" data-canonical-src="https://s2.loli.net/2024/03/08/MiHzsC6S2ANjb5q.png" style="max-width: 100%;"></a></p>
+<p>上述七项完成后，我们点击“保存&amp;应用”，新的网口配置就会被立即应用。</p>
+<p>此时，如果一切正常，那么你的电脑应该可以上网了，且流量应该正常的经过 OpenWrt 而非直接发出。到这里，恭喜各位已经完成了在通常情况下对 OpenWrt 的配置。</p>
+<h2>配置 OpenWrt 虚拟机的另一种方式</h2>
+<p>接下来，需要讲一下非通常情况下的配置。</p>
+<p>例如：如果我们使用的是 WLAN 连接，那么我们的 IP 地址可能会经常变化，这时候我们把先前配置好的 wan 网口协议类型转换回 DHCP 客户端协议一般会解决问题。</p>
+<p>但是，如果我们的网络环境需要进行认证呢？例如所在学校的校园网等要求对每一个联网设备进行网络认证才能访问网络的网络环境，这时候我们按照如上方式配置，会发现我们无法连接到网络。这时候我们需要对已有的配置进行一些修改。</p>
+<p>修改后的配置不仅可以应对需要认证的网络环境，还可以实现在 IP 地址和网段不断变化的网络环境中只需在预先配置时修改一次配置的稳定连接。</p>
+<p>下面我们将会对这一配置方式进行说明。这一配置方式大致可以分为以下步骤：</p>
 <ol>
-<li>Hyper‑V 管理器连接虚拟机，点击启动。</li>
-<li>等待约 30 秒，按下回车进入 OpenWrt tty 终端。</li>
-<li>编辑网络配置文件：</li>
+<li>启用 Windows ICS 服务</li>
+<li>创建并使用新的虚拟网络交换机</li>
+<li>设置网络共享</li>
+<li>前往 OpenWrt 后台页面修改网口配置</li>
 </ol>
-<pre class="notranslate"><code class="notranslate">vim /etc/config/network
-</code></pre>
-<p>按下 <code class="notranslate">i</code> 进入编辑模式，找到 <code class="notranslate">option ipaddr '192.168.11.1'</code>，把 LAN IP 修改为空闲内网 IP，示例改为：</p>
-<pre class="notranslate"><code class="notranslate">option ipaddr '192.168.35.1'
-</code></pre>
-<p>按 <code class="notranslate">Esc</code>，输入 <code class="notranslate">:wq</code> 保存退出。</p>
-<p>重载网络配置：</p>
-<pre class="notranslate"><code class="notranslate">service network reload
-</code></pre>
-<blockquote>
-<p>此时可以浏览器访问修改后的 LAN IP，进入 OpenWrt Web 后台。</p>
-</blockquote>
-<h3>Web 浏览器后台配置</h3>
-<ul>
-<li>默认账号：<code class="notranslate">root</code>；默认密码：<code class="notranslate">password</code>，登录后建议修改密码。</li>
-<li>进入「网络 → 接口」编辑 WAN：</li>
-</ul>
-<ol>
-<li>协议切换为「静态地址」</li>
-<li>IPv4 地址：填入同网段静态IP，示例：<code class="notranslate">192.168.31.70</code></li>
-<li>IPv4 网关：填写 Windows 主机获取到的网关（如 <code class="notranslate">192.168.31.229</code>）</li>
-<li>IPv4 广播：<code class="notranslate">192.168.31.255</code></li>
-<li>DNS：主 <code class="notranslate">8.8.8.8</code>，副 <code class="notranslate">8.8.4.4</code></li>
-<li>子网掩码：<code class="notranslate">255.255.255.0</code></li>
-<li>DHCP 设置：勾选「忽略此接口」</li>
-</ol>
-<p>保存&amp;应用。正常情况下虚拟机即可上网，流量经过 OpenWrt。</p>
-<h2>配置 OpenWrt 虚拟机的另一种方式（ICS 网络共享，适合校园网/Wi‑Fi动态IP）</h2>
-<p>适用场景：WiFi IP 经常变化、校园网网页认证等环境。</p>
-<blockquote>
-<p>前置：把 OpenWrt 虚拟机关机。</p>
-</blockquote>
-<h3>什么是 Windows ICS 服务</h3>
-<p>Windows Internet Connection Sharing（ICS）：Windows 自带网络共享，把一个网卡网络共享给另一个网卡。</p>
-<blockquote>
-<p>ICS 默认固定网段：<code class="notranslate">192.168.137.*</code>。</p>
-</blockquote>
-<blockquote>
-<p><g-emoji class="g-emoji" alias="warning">⚠️</g-emoji> 注意事项：<br>
-方案A：已有内部交换机占用该网段，则新建一个内部交换机给 OpenWrt，开机后调整 eth0/eth1 对应 wan/lan。<br>
-方案B：启动 OpenWrt 修改 LAN IP，避开 <code class="notranslate">192.168.137.*</code>。</p>
-</blockquote>
+<p>进行下述步骤之前，请先将已创建的 OpenWrt 虚拟机关机。</p>
 <h3>启用 Windows ICS 服务</h3>
-<ol>
-<li><code class="notranslate">Win+R</code> 输入 <code class="notranslate">services.msc</code>，打开服务管理器。</li>
-<li>找到 <code class="notranslate">Internet Connection Sharing (ICS)</code>。</li>
-<li>属性：启动类型设置为<strong>自动</strong>，点击启动该服务。</li>
-</ol>
-<h3>创建并使用新的虚拟网络交换机</h3>
-<ol>
-<li>虚拟交换机管理器，删除旧的外部虚拟交换机。</li>
-<li>新建一块<strong>内部虚拟交换机</strong>（示例命名 <code class="notranslate">vlan_wan_ics</code>）。</li>
-<li>虚拟机设置，把原来的外部网卡替换为此新建内部交换机。</li>
-</ol>
-<h3>设置 Windows 网络适配器共享</h3>
-<ol>
-<li>控制面板 → 网络和 Internet → 网络和共享中心 → 更改适配器设置。</li>
-<li>右键你本机正在上网的物理网卡 → 属性 →「共享」选项卡。</li>
-<li>✅ 勾选：<code class="notranslate">允许其他网络用户通过此计算机的 Internet 连接来连接</code>。</li>
-<li>家庭网络连接下拉框，选中刚才新建的内部交换机（<code class="notranslate">vlan_wan_ics</code>）。</li>
-<li><strong>不要勾选：允许其他网络用户控制或禁用共享的 Internet 连接</strong>。确定应用。</li>
-</ol>
-<h3>OpenWrt Web 修改 WAN 接口</h3>
-<p>开机，访问 OpenWrt LAN IP，进入后台，编辑 WAN：</p>
-<ol>
-<li>协议切换为静态地址</li>
-<li>IPv4 地址：<code class="notranslate">192.168.137.2</code>（<code class="notranslate">192.168.137.*</code>，不能是<code class="notranslate">.1</code>）</li>
-<li>IPv4 网关：<code class="notranslate">192.168.137.1</code>（ICS固定地址）</li>
-<li>广播地址：<code class="notranslate">192.168.137.255</code></li>
-<li>DNS：<code class="notranslate">8.8.8.8</code>、<code class="notranslate">8.8.4.4</code></li>
-<li>子网掩码：<code class="notranslate">255.255.255.0</code></li>
-<li>DHCP：勾选忽略此接口</li>
-</ol>
-<p>保存&amp;应用。网络正常即可使用。</p>
-<h3>Windows ICS 的已知问题</h3>
+<p>什么是 Windows Connection Sharing(ICS) 服务<br>
+Windows Internet Connection Sharing(ICS) 服务是 Windows 内置的网络共享服务，其官方描述是“为家庭和小型办公网络提供网络地址转换、寻址、名称解析和/或入侵保护服务”，其作用是将一个网络适配器的网络连接共享给另外一个网络适配器，以实现两个适配器同时连接网络。</p>
+<p>之前介绍内部虚拟网络交换机的时候我曾经说过：</p>
 <blockquote>
-<p>ICS 特性：空闲约4分钟无流量会自动关闭；系统重启后 ICS 共享会失效。<br>
-临时方案：每次开机重新设置网络共享。<br>
-长久方案：Win10 1709及以后版本，修改注册表实现 ICS 持久化。</p>
+<p>这种虚拟交换机通常情况下不可用于让虚拟机联网。</p>
 </blockquote>
-<h2>结语</h2>
-<p>至此完成从开启 Hyper‑V、镜像转换、虚拟机创建、OpenWrt 网络配置全部流程。</p></div>
+<p>但是，如果我们开启了 ICS 服务，我们就可以赋予先前无法连接外部网络的内部虚拟交换机联网的能力。我们要进行的配置，就依赖于这项服务。</p>
+<p>请注意：Windows ICS 服务将运行在本机的 192.168.137.* 网段上。请记住这一网段。如果你先前已经为已有的内部虚拟交换机设置为了这一网段，为了后续配置，这里有两种解决方式：</p>
+<ol>
+<li>将这个内部虚拟交换机作为稍后网络共享的目标网络适配器，然后新建一个内部虚拟交换机，将新建的内部虚拟交换机注册到 OpenWrt 虚拟机中。按照下述步骤执行完毕后，OpenWrt 开机会按照新的网卡顺序重新注册网卡，此时如无意外你的原有内部虚拟交换机会被注册为 eth0，新的内部虚拟交换机会被注册为 eth1。此时你需要将 wan 口绑定到 eth0，将 lan 口绑定到 eth1，然后继续配置。如果更改配置前 wan 口和 lan 口对应的内部虚拟交换机已被正确绑定，那么直接继续配置即可。</li>
+<li>启动 OpenWrt 虚拟机，在开机后进入后台管理页面，更改 lan 口配置，修改配置的内网 IP 地址为除了 192.168.137.* 网段以外的内网 IP 地址。</li>
+</ol>
+<p>启用 Windows ICS 服务</p>
+<p>首先，我们需要按下“Win” + “R”键打开“运行”窗口，输入 services.msc，打开 Windows 控制台的服务管理页面。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/d6c59ca89aa4f9ec9b0e3033a2ebc9c2ebf7a2e4e6305fe6e81f84e70ad6d6af/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f5674735831396c7a7771576b3453722e706e67"><img src="https://camo.githubusercontent.com/d6c59ca89aa4f9ec9b0e3033a2ebc9c2ebf7a2e4e6305fe6e81f84e70ad6d6af/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f5674735831396c7a7771576b3453722e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/08/VtsX19lzwqWk4Sr.png" style="max-width: 100%;"></a></p>
+<p>然后，我们需要滚动鼠标滚轮或上下滑动触控板，在服务列表里找到 Internet Connection Sharing(ICS)，右键或双击它，进入属性。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/13713f9a71296f849aa77bb0aecfec46476906bcca6990da1be5ec65b8e2fd65/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f3437356177464a4c385076314555512e706e67"><img src="https://camo.githubusercontent.com/13713f9a71296f849aa77bb0aecfec46476906bcca6990da1be5ec65b8e2fd65/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f3437356177464a4c385076314555512e706e67" alt="服务 -&gt; Internet Connection Sharing(ICS)" data-canonical-src="https://s2.loli.net/2024/03/08/475awFJL8Pv1EUQ.png" style="max-width: 100%;"></a></p>
+<p>我们需要将其的启动类型设置为“自动”，并且需要立刻启动这项服务。也就是下图所示蓝框的两处：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/bc54baab59406dde7f39f0af34cff267f3336bdbcecce8a1e6e534da6682adf9/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f74554c634f4844354d7146584e50682e706e67"><img src="https://camo.githubusercontent.com/bc54baab59406dde7f39f0af34cff267f3336bdbcecce8a1e6e534da6682adf9/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f74554c634f4844354d7146584e50682e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/08/tULcOHD5MqFXNPh.png" style="max-width: 100%;"></a></p>
+<p>至此，服务配置完成。我们可以开始创建新的虚拟网络交换机了。</p>
+<h3>创建并使用新的虚拟网络交换机</h3>
+<p>创建虚拟网络交换机的步骤与本文第三步第一部分第二节的步骤完全一致，名称任取即可。请注意：我们这里需要创建的虚拟网络交换机是内部虚拟交换机，并且这里建议在创建这一内部虚拟交换机之前删除或禁用已有的任何外部虚拟交换机。删除虚拟交换机的步骤：进入虚拟交换机管理器，选择要删除的虚拟交换机，点击“移除”后应用即可。</p>
+<p>回到我们的 Hyper-V 管理器，找到我们配置的 OpenWrt 虚拟机，进入其属性页面，将我们在第三步第二部分中添加的外部虚拟交换机更改为我们创建的第二个内部虚拟交换机，应用即可。这里我的内部虚拟交换机命名为了“vlan_wan_ics”，所以最后效果应该如下图所示，蓝框部分应该发生了变化：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/25b389b63a72e3a4acb3e83ef060a1bb0aa33bcd0a01f31aa8a59f92da817032/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f5652356b4c6e57586f5141737a59492e706e67"><img src="https://camo.githubusercontent.com/25b389b63a72e3a4acb3e83ef060a1bb0aa33bcd0a01f31aa8a59f92da817032/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f5652356b4c6e57586f5141737a59492e706e67" alt="第二个内部虚拟交换机" data-canonical-src="https://s2.loli.net/2024/03/08/VR5kLnWXoQAszYI.png" style="max-width: 100%;"></a></p>
+<p>到这里，我们就可以进入下一步：设置网络共享了。</p>
+<h3>设置网络共享</h3>
+<p>在设置网络共享之前，我们必须确保先前设置的 ICS 服务已被启用且当前正在运行。</p>
+<p>确认服务运行的步骤与本章第一部分第二节设置服务状态前的步骤完全一致，只需要查看状态是否为“正在运行”即可。如果未在运行，则请继续按照本章第一部分第二节的步骤继续执行。</p>
+<p>确认服务正在运行之后，我们需要打开控制面板。Windows 11 的控制面板打开方式比较繁琐，需要按下“Win” + “R”键打开“运行”窗口，输入 control 才能打开控制面板。Windows 10 及以下版本的用户可以直接在开始菜单寻找。打开控制面板后，我们需要依次点击“网络和 Internet” -&gt; “网络与共享中心” -&gt; “更改适配器设置”以进入适配器设置界面。</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/ea5c1e155393a1623bd3862e1fa21856a8cf7102bc52cd866e12550125a586de/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f436c4941764a3678425a586b6d75442e706e67"><img src="https://camo.githubusercontent.com/ea5c1e155393a1623bd3862e1fa21856a8cf7102bc52cd866e12550125a586de/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f436c4941764a3678425a586b6d75442e706e67" alt="网络适配器页面" data-canonical-src="https://s2.loli.net/2024/03/08/ClIAvJ6xBZXkmuD.png" style="max-width: 100%;"></a></p>
+<p>进入适配器设置界面后，我们需要右键当前联网的物理网卡，右键进入适配器属性。上图中标蓝框的是的联网网卡，各位配置时需要选择自己的联网网卡。</p>
+<p>右键进入属性后，我们进入“共享”选项卡，勾选“允许其他网络用户通过此计算机的 Internet 连接来连接”选项，在下拉框中找到我们在本章第二部分创建的内部虚拟交换机并选中。下方的“允许其他网络用户控制或禁用共享的 Internet 连接”选项不要勾选。设置完成后的页面应该如下图所示(这里的内部虚拟交换机名称为 vlan_wan_ics)：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/542bf22267cd36ea0a194a401b59e735d023cab0b438e7fc0e13ce7ac9b0f154/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f57363833464434523566454f4d4c512e706e67"><img src="https://camo.githubusercontent.com/542bf22267cd36ea0a194a401b59e735d023cab0b438e7fc0e13ce7ac9b0f154/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f57363833464434523566454f4d4c512e706e67" alt="" data-canonical-src="https://s2.loli.net/2024/03/08/W683FD4R5fEOMLQ.png" style="max-width: 100%;"></a></p>
+<p>应用，然后退出即可。</p>
+<p>此步完成后，我们就可以去配置 OpenWrt 虚拟机了。</p>
+<h3>前往 OpenWrt 后台页面修改网口配置</h3>
+<p>回到 Hyper-V 管理器，找到我们创建的 OpenWrt 虚拟机，将其开机。稍等片刻后，进入浏览器，访问我们先前设置好的内网 IP 地址(正常情况下此项不应发生变化)，输入用户账户密码，进入 OpenWrt 的后台管理页面。此步骤与本文第四步第二部分保持一致，但是对 wan 口的更改必须严格按照以下步骤进行：</p>
+<ol>
+<li>切换协议类型为“静态地址”。</li>
+<li>新增 IPv4 地址。由于我们已经知道 ICS 服务运行的网段位于 192.168.137.* 网段上，所以我们指定的网络地址必须是在这一网段上除了 192.168.137.1 以外的内网地址。这里设置为 192.168.137.2，各位可以在这一网段范围内任意设置。</li>
+<li>新增 IPv4 网关。网关地址必须设置为 192.168.137.1，这是 ICS 服务的预留地址。</li>
+<li>新增 IPv4 广播地址。广播地址这里需要设置为 192.168.137.255。</li>
+<li>设置自定义 DNS 服务器：此项可以让 OpenWrt 使用独立的 DNS 服务器配置。也可以不设置。这里推荐设置为主服务器地址 8.8.8.8，副服务器地址 8.8.4.4 (Google Public DNS Server)。</li>
+<li>设置子网掩码为 255.255.255.0。</li>
+<li>勾选 DHCP 设置的“忽略此接口”选项。</li>
+</ol>
+<p>配置完成以后，如果没有差错，最终体现在网页上的配置应该如下图所示，蓝框表示我们需要修改的配置项：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/4919faf284121b3258d8ce39ff91cead4fe5154cc758489fa29b661f48c49a89/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f4e446e5a5845353463687451526a4b2e706e67"><img src="https://camo.githubusercontent.com/4919faf284121b3258d8ce39ff91cead4fe5154cc758489fa29b661f48c49a89/68747470733a2f2f73322e6c6f6c692e6e65742f323032342f30332f30382f4e446e5a5845353463687451526a4b2e706e67" alt="wan 网口配置" data-canonical-src="https://s2.loli.net/2024/03/08/NDnZXE54chtQRjK.png" style="max-width: 100%;"></a></p>
+<p>上述七项完成后，我们点击“保存&amp;应用”，新的网口配置就会被立即应用。</p>
+<p>此时，如果一切正常，那么你的电脑应该可以上网了，且流量应该正常的经过 OpenWrt 而非直接发出。</p>
+<p>到这里，请允许再次恭喜各位完成了另一种 OpenWrt 虚拟机的配置。在此配置下，我们不仅可以应对需要认证的网络环境，还可以实现在 IP 地址和网段不断变化的网络环境中只需修改一次配置的稳定连接。</p>
+<h3>Windows ICS 服务的额外问题</h3>
+<p>相信各位应该已经体验到了来自于 OpenWrt 的强大功能，但是在实际使用过程中我们可能会面临这样一个问题：每次重启的时候我们的网络连接都会丢失。这一问题应该归咎于于 Windows ICS 服务自身的特性。</p>
+<p>Windows ICS 服务运行的规则是：</p>
+<blockquote>
+<p>通常，如果 ICS 上 4 分钟没有流量，服务将关闭，并且不会自动重启。</p>
+</blockquote>
+<p>每当我们重启时，Windows ICS 服务便会自动认为在重启这段时间内没有网络流量，并且无视四分钟限制直接停止服务。</p>
+<p>一种解决方案是每次重新启动后按照本文本步骤第一节的步骤重新设置网络共享，但是这种方式过于繁琐。</p>
+<p>而 Windows 10 1709 以后，微软给出了一个解决方案：<a href="https://learn.microsoft.com/zh-cn/troubleshoot/windows-client/networking/ics-not-work-after-computer-or-service-restart" rel="nofollow">改注册表值，允许 Windows ICS 服务在任何情况下的持久化连接。</a>修这里推荐使用这一方法。</p></div>
 <div style="font-size:small;margin-top:8px;float:right;">❤️ 转载文章请注明出处，谢谢！❤️</div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
@@ -340,7 +321,7 @@ if("2026/10/29"!=""){
 </script></div>
 </body>
 <script>
-var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
 var utterancesLoad=0;
 
 let themeSettings={
@@ -414,70 +395,7 @@ function iFrameLoading(){
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const createClipboardHTML = (codeContent, additionalClasses = '') => `
-        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
-        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
-            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
-                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
-                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
-            </clipboard-copy>
-            <div class="copy-feedback">Copied!</div>
-        </div>
-    `;
 
-    const handleCodeElements = (selector = '') => {
-        document.querySelectorAll(selector).forEach(codeElement => {
-            const codeContent = codeElement.innerHTML;
-            const newStructure = document.createElement('div');
-            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
-            newStructure.innerHTML = createClipboardHTML(codeContent);
-
-            const parentElement = codeElement.parentElement;
-            if (selector.includes('highlight')) {
-                parentElement.insertBefore(newStructure, codeElement.nextSibling);
-                parentElement.removeChild(codeElement);
-            } else {
-                parentElement.parentElement.replaceChild(newStructure, parentElement);
-            }
-        });
-    };
-
-    handleCodeElements('pre.notranslate > code.notranslate');
-    handleCodeElements('div.highlight > pre.notranslate');
-
-    let currentFeedback = null;
-    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
-        copyButton.addEventListener('click', () => {
-            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
-            const tempTextArea = document.createElement('textarea');
-            tempTextArea.value = codeContent;
-            document.body.appendChild(tempTextArea);
-            tempTextArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempTextArea);
-
-            const copyIcon = copyButton.querySelector('.octicon-copy');
-            const checkIcon = copyButton.querySelector('.octicon-check');
-            const copyFeedback = copyButton.nextElementSibling;
-
-            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
-            currentFeedback = copyFeedback;
-
-            copyIcon.classList.add('d-none');
-            checkIcon.classList.remove('d-none');
-            copyFeedback.style.display = 'block';
-            copyButton.style.borderColor = 'var(--color-success-fg)';
-
-            setTimeout(() => {
-                copyIcon.classList.remove('d-none');
-                checkIcon.classList.add('d-none');
-                copyFeedback.style.display = 'none';
-                copyButton.style.borderColor = '';
-            }, 2000);
-        });
-    });
-});
 
 </script>
 
