@@ -1,4 +1,4 @@
-name: build Gmeek
+name: build blog
 
 on:
   workflow_dispatch:
@@ -35,32 +35,32 @@ jobs:
 
       - name: Clone source code
         run: |
-          GMEEK_VERSION=$(jq -r ".GMEEK_VERSION" config.json)
-          git clone https://github.com/zhfou/Gmeek.git /opt/Gmeek;
-          cd /opt/Gmeek/
+          blog_VERSION=$(jq -r ".blog_VERSION" config.json)
+          git clone https://github.com/zhfou/blog.git /opt/blog;
+          cd /opt/blog/
           lastTag=$(git describe --tags `git rev-list --tags --max-count=1`)
-          if [ $GMEEK_VERSION == 'last' ]; then git checkout $lastTag; else git checkout $GMEEK_VERSION; fi;
+          if [ $blog_VERSION == 'last' ]; then git checkout $lastTag; else git checkout $blog_VERSION; fi;
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r /opt/Gmeek/requirements.txt
+          pip install -r /opt/blog/requirements.txt
 
       - name: Generate new html
         run: |
-          cp -r ./* /opt/Gmeek/
-          cd /opt/Gmeek/
-          python Gmeek.py ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }} --issue_number '${{ github.event.issue.number }}'
-          cp -a /opt/Gmeek/docs ${{ github.workspace }} 
-          cp -a /opt/Gmeek/backup ${{ github.workspace }} 
-          cp /opt/Gmeek/blogBase.json ${{ github.workspace }} 
+          cp -r ./* /opt/blog/
+          cd /opt/blog/
+          python blog.py ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }} --issue_number '${{ github.event.issue.number }}'
+          cp -a /opt/blog/docs ${{ github.workspace }} 
+          cp -a /opt/blog/backup ${{ github.workspace }} 
+          cp /opt/blog/blogBase.json ${{ github.workspace }} 
           
       - name: update html
         run: |
           git config --local user.email "$(jq -r ".email" config.json)"
           git config --local user.name "${{ github.repository_owner }}"
           git add .
-          git commit -a -m '🎉auto update by Gmeek action' || echo "nothing to commit"
+          git commit -a -m '🎉auto update by blog action' || echo "nothing to commit"
           git push || echo "nothing to push"
           sleep 3
           
