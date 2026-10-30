@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark_colorblind" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    <script src='https://raw.githubusercontent.com/zhfou/blog/refs/heads/main/plugins/Vercount.js'></script>
+    <link rel="icon" href="https://www.blogger.com/img/logo_blogger_40px_2x.png"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="分词器（tokenizer）常被视为大语言模型（LLM）的一部分，但实际上它有着相对独立的设计与训练流程。">
+<meta property="og:title" content="分词器">
+<meta property="og:description" content="分词器（tokenizer）常被视为大语言模型（LLM）的一部分，但实际上它有着相对独立的设计与训练流程。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://zhfou.github.io/post/fen-ci-qi.html">
+<meta property="og:image" content="https://www.blogger.com/img/logo_blogger_40px_2x.png">
+<title>分词器</title>
+<link href="//unpkg.com/@wooorm/starry-night@2.1.1/style/both.css" rel="stylesheet" />
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">分词器</h1>
+<div class="title-right">
+    <a href="https://zhfou.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/zhfou/zhfou.github.io/issues/7" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><p>分词器（tokenizer）常被视为大语言模型（LLM）的一部分，但实际上它有着相对独立的设计与训练流程。</p>
+<p>一个直观的理解方式是：<strong>模型并不直接“读懂文字”，它只能处理数字</strong>。而分词器做的事情，就是把原始文本切分成一个个词元（token），并将这些片段映射为对应的数字ID，供模型后续计算使用。可以用一个例子来理解：</p>
+<p>模型的工作方式可以类比为一条“自动化快递处理流水线”，其中的tokenizer更像是一个<strong>带有经验规则的智能分拣与打包中心</strong>。我们可以想象这样一个场景——</p>
+<p>我们需要寄一个混合物品的“快递”，即是一堆经常重复出现的组合（就像语言中反复出现的词、词根、子词），但“快递公司”的运输系统（大语言模型）有一个限制——不理解具体物品，只认识 ID编号 ，而且更倾向于处理出现的标准物件（token），于是，在进入运输系统之前，会有一个更“聪明”的分拣中心（tokenizer）把这些<strong>重复组合拆解并转换成系统唯一识别的ID序列</strong>：</p>
+<ul>
+<li><strong>拆分物品（文本切分）：</strong> 不是随便乱拆，而是尝试找到“经常一起出现的组合”，比如“火锅”不会拆成“火 + 锅”，因为它作为整体更常见；</li>
+<li><strong>复用已有包装（子词建模）：</strong> 如果某个大件不常见，就拆成常见的小件组合，比如“超导材料”可能拆成“超导 + 材料”；</li>
+<li><strong>动态决定颗粒度（关键点）：</strong> <code class="notranslate">常见的组合 → 打包成一个整体，罕见的组合 → 拆成多个小块</code>，这其实就是BPE、WordPiece等tokenizer在做的事情；</li>
+<li><strong>统一编号（token ID）：</strong> 每种“标准件”都会被分配一个固定编号；</li>
+<li><strong>输出编号序列（token序列）：</strong> 最终交给模型处理的是一串编号，而不是原始文本。</li>
+</ul>
+<p><strong>这个例子背后的关键点是：</strong></p>
+<ul>
+<li><strong>分词算法不是唯一的</strong>：不同的分词算法（如BPE、WordPiece）会出现不同的划分结果；</li>
+<li><strong>分词器会影响模型能力</strong>：token划分得太“碎片化”或太“笼统”，都会影响表达效率和泛化能力；</li>
+<li><strong>它是独立优化的模块</strong>：通常先在大规模文本上训练词表（vocab），再<strong>固定下来供模型使用</strong>。</li>
+</ul>
+<p><em>注：以划分<code class="notranslate">incredible</code>为例——<code class="notranslate">['i','n','cr','e','dible']</code>就过于”碎片化“了，<code class="notranslate">['incredible']</code>过于”笼统“，理想的划分是<code class="notranslate">['in','credible']</code>这样能在不同单词中复用，既控制了token总数，又提升了embedding的映射能力。</em></p>
+<blockquote>
+<p>一句话总结——<strong>LLM负责“理解和生成”，而tokenizer负责“把语言变成模型能理解、可复用的结构”。</strong></p>
+</blockquote>
+<div align="center">
+  <a target="_blank" rel="noopener noreferrer" href="./images/2-1-分词器与LLM.png"><img src="./images/2-1-分词器与LLM.png" alt="分词器与LLM" width="800" style="max-width: 100%;"></a>
+  <p><em>图 1. 分词器与LLM</em></p>
+</div>
+<blockquote>
+<p>需要注意的是，这一过程不仅是简单的编码转换，更隐含了一种模型对“世界的切分“策略：模型最终“看到”的基本单位，可能是字符、词，或更常见的子词片段编码。这种表示方式将直接影响序列长度、信息密度以及语义的组合方式，从而进一步影响模型的训练效率、表现能力。</p>
+</blockquote>
+<hr>
+<h2>1 本章学习目标</h2>
+<p>在进入具体分析之前，我们先明确本节的关注重点。本节将围绕分词器这一看似简单、但对LLM行为有深远影响的模块展开，主要包括：</p>
+<ul>
+<li>理解4个分词算法（如BPE、WordPiece...）的基本原理与训练流程。</li>
+<li>分析基于不同分词算法实现tokenizer的区别，以及BPE流行的原因。</li>
+<li>结合实际工具（如DeepSeek的相关实现）动手使用分词器。</li>
+</ul>
+<p>相比“如何使用”，本节更关注一个更根本的问题：</p>
+<blockquote>
+<p><strong>分词器究竟在解决什么问题？我们又该如何设计一个<em>好的</em>分词器？</strong></p>
+</blockquote>
+<p><strong>围绕这一核心问题，可以从以下几个层面逐步展开：</strong></p>
+<ul>
+<li>分词器如何从数据中被“学习”出来，不同分词算法（如BPE、Unigram LM...）的核心思想是什么？</li>
+<li>不同分词策略（不同的切分方式）如何影响模型的能力，并进一步影响语义建模与组合能力？</li>
+<li>分词器在实际工程中如何落地？</li>
+</ul>
+<p><em>在学习开始之前，我们可以先来看看一下<a href="https://tiktokenizer.vercel.app/?model=gpt-4-1106-preview" rel="nofollow">分词器</a>。接着我们带着这几个问题，开始进入分词器的学习！</em></p>
+<h2>2 训练分词器</h2>
+<p>虽然分词器常被当作模型的一部分，但它其实是提前单独准备好的：先对原始文本做一些清洗和整理，然后通过统计方法或子词规则，总结出一套<code class="notranslate">词元 → 数字编号</code>对应表（也就是词表，vocab）。之后，任何输入文本都会按照这张表，被转换成一串不再是人类能读的文字，而是一段段离散的数字序列。</p>
+<pre class="notranslate"><code class="notranslate">训练一个用于现代大型语言模型的分词器可以拆成四步：准备语料 → 初始化基础单元(不同的分词算法，可省略) → 统计并迭代合并 → 输出产物并用于编码、解码。
+</code></pre>
+<div align="center">
+  <a target="_blank" rel="noopener noreferrer" href="./images/2-2-分词器训练流程.png"><img src="./images/2-2-分词器训练流程.png" alt="分词器训练流程" width="800" style="max-width: 100%;"></a>
+  <p><em>图 2. 分词器训练流程</em></p>
+</div>
+<h3>2.1 准备语料</h3>
+<p><strong>Step1</strong>  在准备语料阶段，应尽量收集覆盖目标应用场景的多样化文本，以便训练出的词表对下游任务具有良好泛化能力：</p>
+<ul>
+<li>准备不同类型的文本信息比如小说、散文、诗歌等不同描述风格的信息；</li>
+<li>多种语言的文本信息比如中文、英文、韩语、法语等。</li>
+</ul>
+<p>多语言或混合语料场景中，应统计各语言占比，并评估是否对低资源语言进行过采样或定向保留，避免词表被高频语言主导。否则，语料类型与语言分布不均衡会加剧低资源语言的<code class="notranslate">token碎片化</code>，可能会降低其任务性能。例如准备一种可以支持四种语言的分词器，这里假设提前收集到的原始未经过处理的各语言原始语料占比如下：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>语言</th>
+<th>语料量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>中文</td>
+<td>200 GB</td>
+</tr>
+<tr>
+<td>英文</td>
+<td>150 GB</td>
+</tr>
+<tr>
+<td>法语</td>
+<td>10 GB</td>
+</tr>
+<tr>
+<td>韩文</td>
+<td>5 GB</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<blockquote>
+<p>这是一个典型的多语言语料不平衡场景。若将上述语料不经处理直接混合训练分词器，其统计过程会被中文和英文主导，导致法语与韩文的常见字串在合并阶段难以进入高频统计，从而无法占据足够的词表空间，最终在<code class="notranslate">vocab</code>中会出现大量被切得过碎的<code class="notranslate">token</code>，形成严重碎片化，下游LLM在法语与韩文任务上会因此表现显著劣化。</p>
+</blockquote>
+<p>因此，在准备语料时，需要先按语言统计语料占比，并根据目标能力设定合理的采样策略。例如将语料比例调整为<code class="notranslate">中文:英文:法语:韩文=4:4:1:1</code>或者<code class="notranslate">采用完全均衡策略</code>。通过对高资源语言下采样或对低资源语言过采样、增强，可以获得更符合目标分布的训练语料。</p>
+<p><strong>Step2</strong>  对原始文本进行清洗和标准化是必须的步骤，包含去除或屏蔽无关元数据、修正或删除乱码与非法字符、统一字符编码，以及对带有敏感信息或隐私的语料要提前进行脱敏处理与合规检查，明确哪些信息不可用于训练并记录数据来源与许可。</p>
+<p><strong><a href="#51-%E9%99%84%E5%BD%951%E6%95%B0%E6%8D%AE%E8%84%B1%E6%95%8F%E5%A4%84%E7%90%86%E7%A4%BA%E4%BE%8B">根据NER技术进行数据脱敏处理的示例</a>的输出分析</strong></p>
+<p>处理前</p>
+<blockquote>
+<p>小明的邮箱是<a href="mailto:test111@gmail.com">test111@gmail.com</a>，电话是13312311111，现在居住于重庆两江新区的xxx小区。</p>
+</blockquote>
+<p>脱敏后</p>
+<blockquote>
+<p>[NAME]的邮箱是[EMAIL]，电话是[PHONE]，现在居住于[PLACE]。</p>
+</blockquote>
+<p>如果句子中出现姓名、电话号码、住址等敏感信息，需要进行脱敏处理。<strong>通常在数据处理流程中，会优先处理高确定性的信息（例如电话号码、邮箱等）以排除干扰，随后再处理姓名等非标准信息，从而降低因表达不规范或格式多样而导致的总体漏检风险</strong>。</p>
+<p>值得注意的是，数据脱敏不仅是出于隐私保护与合规要求，同时也有助于提升下游文本建模与分词过程的稳定性。像姓名、电话号码、身份证号等高基数的信息，如果直接保留在语料中，往往会以近似唯一的形式出现。这类信息在统计上属于低频甚至单次出现的噪声，会干扰分词算法（如BPE、Unigram）在学习高频token结构时的统计效率。</p>
+<blockquote>
+<p>这样可以<strong>有效降低语料中无效的多样性</strong>，使分词器更专注于建模具有统计规律的语言模式，从而提升词表的利用效率、一致性。<em>从香农信息论的角度来看，数据脱敏可以视为一种结构化的去噪过程——通过压缩或减少高熵但低语义价值的信号（如具体身份信息），提高语料中有效信号的占比，可以协助LLM在后面的训练过程更倾向于学习可复用的语义结构，而非记忆偶然出现的实例细节。</em></p>
+</blockquote>
+<p><em>Tips：高熵是指在给定上下文条件下，概率分布相对分散，从而具有较高的不确定性和预测困难度较高。</em></p>
+<p>而下游任务本身需要识别真实实体（如信息抽取等），过度脱敏会削弱训练信号。因此需要在<strong>保护隐私</strong>与<strong>保留关键语义信息</strong>之间进行合理的策略选择与权衡。</p>
+<p><strong>Step3</strong>  建议保留一小部分未参与训练的验证语料比如训练集:验证集＝99:1，用来在训练过程中评估分词器对真实文本的编码效率与平均token长度等统计指标。</p>
+<h3>2.2 预分词阶段</h3>
+<p><strong>Step1</strong> 预分词的主要任务是将原始文本切分成可统计、可合并的基础单元，例如字符、字节或Unicode片段。常见策略包括基于空格和标点的切分、按Unicode类别划分，或直接采用字节级切分。需要注意的是并不是所有的分词器都需要用户显式进行预分词。<em>例如基于SentencePiece的分词器将标准化和预分词逻辑内置，因此无需在外部额外执行预分词步骤。</em></p>
+<ul>
+<li>基于空格和标点的切分策略：一个完整的句子中遇到空格或者标点（.,!?[]{}...）可以分为独立的tokens，该方法适用于大多数预分词处理过程。</li>
+</ul>
+<div class="highlight highlight-source-python"><pre class="notranslate">      
+<span class="pl-c"># 基于空格和标点切分的实现示例</span>
+<span class="pl-k">import</span> <span class="pl-s1">re</span>
+         
+<span class="pl-k">def</span> <span class="pl-en">part</span>(<span class="pl-s1">text</span>):
+   <span class="pl-c"># 将标点符号单独拆开，并按照空格进行分割</span>
+   <span class="pl-s1">text</span> <span class="pl-c1">=</span> <span class="pl-s1">re</span>.<span class="pl-c1">sub</span>(<span class="pl-s">r'([.,!?;:()"\'\[\]{}])'</span>, <span class="pl-s">r' \1 '</span>, <span class="pl-s1">text</span>)
+   <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">text</span>.<span class="pl-c1">split</span>()
+   <span class="pl-k">return</span> <span class="pl-s1">tokens</span>
+
+<span class="pl-c"># 测试</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:         
+   <span class="pl-s1">s</span> <span class="pl-c1">=</span> <span class="pl-s">"I like Datawhale."</span>
+   <span class="pl-en">print</span>(<span class="pl-en">part</span>(<span class="pl-s1">s</span>))
+   </pre></div>
+<p>输入</p>
+<blockquote>
+<p>I like Datawhale.</p>
+</blockquote>
+<p>输出token划分</p>
+<blockquote>
+<p>['I', 'like', 'Datawhale', '.']</p>
+</blockquote>
+<ul>
+<li>Unicode类别划分策略：按照字符的Unicode类别（字母、数字、标点、中文、特殊字符等）自动切分，不同类别会进入不同的token块——<em>一句话概括，同一个token里的字符类型都是一致的</em>。这种方法天然适合多语言混合文本，能提供一个可靠的基线切分结果。</li>
+</ul>
+<p><strong><a href="#52-%E9%99%84%E5%BD%952%E5%9F%BA%E4%BA%8Eunicode%E7%9A%84%E5%88%92%E5%88%86%E7%AD%96%E7%95%A5">根据Unicode类别划分策略的示例</a>的输出分析</strong></p>
+<p>输入</p>
+<blockquote>
+<p>Hello，Datawhale成立于2018年！！！</p>
+</blockquote>
+<p>输出</p>
+<blockquote>
+<p>['Hello', '', '，', 'Datawhale', '成立于', '2018', '年', '！！！']</p>
+</blockquote>
+<ul>
+<li>字节级划分策略：先将每个字符拆成<a href="https://datatracker.ietf.org/doc/html/rfc3629" rel="nofollow">UTF-8字节序列</a>，不依赖语言种类、字符，按照单个字节序列得到一个独立的token。</li>
+</ul>
+<p><strong>根据字节级划分策略的输出分析</strong></p>
+<div class="highlight highlight-source-python"><pre class="notranslate">     
+<span class="pl-k">def</span> <span class="pl-en">tokenize_byte_level</span>(<span class="pl-s1">text</span>):
+   <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> []
+   <span class="pl-k">for</span> <span class="pl-s1">ch</span> <span class="pl-c1">in</span> <span class="pl-s1">text</span>:
+   <span class="pl-c"># 字符对应的UTF-8字节序列</span>
+      <span class="pl-s1">utf8_bytes</span> <span class="pl-c1">=</span> <span class="pl-s1">ch</span>.<span class="pl-c1">encode</span>(<span class="pl-s">"utf-8"</span>)
+      <span class="pl-s1">hex_bytes</span> <span class="pl-c1">=</span> [<span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">b</span>:02X<span class="pl-kos">}</span></span>"</span> <span class="pl-k">for</span> <span class="pl-s1">b</span> <span class="pl-c1">in</span> <span class="pl-s1">utf8_bytes</span>]
+      <span class="pl-en">print</span>(<span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">ch</span><span class="pl-kos">}</span></span> 转化为UTF-8字节序列：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">hex_bytes</span><span class="pl-kos">}</span></span>"</span>)
+      <span class="pl-s1">tokens</span>.<span class="pl-c1">extend</span>(<span class="pl-s1">hex_bytes</span>)
+   <span class="pl-k">return</span> <span class="pl-s1">tokens</span>
+
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+   <span class="pl-s1">s</span> <span class="pl-c1">=</span> <span class="pl-s">"All for learners！"</span>
+   <span class="pl-en">print</span>(<span class="pl-en">tokenize_byte_level</span>(<span class="pl-s1">s</span>))</pre></div>
+<p>输入</p>
+<blockquote>
+<p>All for learners！</p>
+</blockquote>
+<p>输出token划分</p>
+<blockquote>
+<p>['41', '6C', '6C', '20', '66', '6F', '72', '20', '6C', '65', '61', '72', '6E', '65', '72', '73', 'EF', 'BC', '81']</p>
+</blockquote>
+<p><em>英文字符和空格是ASCII，UTF-8下都是1字节。而全角感叹号<code class="notranslate">！</code>不是ASCII，在UTF-8下是3字节（<code class="notranslate">！ -&gt; EF BC 81</code>）</em></p>
+<p><strong>Unicode与UTF-8的联系：</strong></p>
+<p><code class="notranslate">Unicode</code>就像给全世界所有字符发的“身份证号”，不管是英文A、汉字“中”、还是emoji 等不同类型的字符都在Unicode里有一个唯一编号比如A是U+0041，“中”是U+4E2D。但“身份证号”本身只是一个抽象编号，电脑不能直接存储。</p>
+<p><code class="notranslate">UTF-8</code>就像把这个字符对应的“身份证号”写进电脑的具体方式。它规定这个字符的编号应该用几个字节、按什么规则写下来。英文常用字符在UTF-8中只需要1个字节，而中文通常需要3个字节。不管是Unicode还是UTF-8都可以表示不同类别的字符，两者配合起来让自然语言可以被计算机准确存储、传输和解析，是人机交互之间的“桥梁”。</p>
+<blockquote>
+<p>Unicode是"编码标准"，为每个字符分配唯一码点；UTF-8是"编码格式"，负责将码点转换为字节序列。<strong>UTF-8的一大优势是：ASCII字符（0-127）在UTF-8中的编码与ASCII码完全一致，且只占1个字节。这种向后兼容的特性，让它比UTF-16、UTF-32等编码方式更为常用。</strong></p>
+</blockquote>
+<p><strong>在LLM的token划分中，常见策略包括</strong>：</p>
+<p>（1）基于规则的预分词（如按空格和标点切分）；</p>
+<p>（2）按Unicode类别分段（如连续汉字、连续拉丁字母或数字）；</p>
+<p>（3）更底层的UTF-8字节级切分。</p>
+<p>（1）、（2）方法在以下场景中存在局限——文本缺乏显式分隔符，或出现长段同类字符。在这些情况下，预处理阶段难以有效断句，为了保证文本可编码，可能会被迫回退到更细粒度的兜底切分（接近字符级）。相比之下，UTF-8字节级策略具有最强的通用性，它把任意文本统一拆为字节序列，从而从根本上减少未词汇表外（OOV）问题并覆盖任意字符集。但因为它以最细粒度开始，训练时通常需要更多轮的共现统计与合并来把零散字节压缩为紧凑且具语义的token，才能在Transformer计算效率与语义表征之间取得平衡。</p>
+<p><em>Tips：词汇表外是当LLM模型在处理新的、实际应用的文本时，如果遇到一个词汇表中没有的Token，那么这个Token就被视为一个OOV。</em></p>
+<div align="center">
+  <a target="_blank" rel="noopener noreferrer" href="./images/2-3-词元序列长度与注意力计算.png"><img src="./images/2-3-词元序列长度与注意力计算.png" alt="token序列长度对注意力机制的影响" width="800" style="max-width: 100%;"></a>
+  <p><em>图 3. token序列长度对注意力机制的影响</em></p>
+</div>
+<p>根据图2.3可以看出，token数量对注意力机制的影响主要体现在两方面：</p>
+<ul>
+<li>计算复杂度呈 $O(N^2)$ 增长；</li>
+<li>受到上下文窗口容量的限制。</li>
+</ul>
+<p>当token划分得越碎片化（即总token数量越多），注意力机制的效率就越低。</p>
+<p><strong>Step2</strong>  对大多数以空格为词边界的语言，<strong>可先用正则表达式按单词边界和标点进行初步划分</strong>，而对中文、日文等不以空格为词界的语言则通常采用逐字符或基于字的初始单元来保证覆盖性。</p>
+<p><strong>Step3</strong>  预分词生成的基础单元序列将作为后续统计合并的输入，务必保存该序列与对应位置信息以便在训练过程反复高效更新。</p>
+<p><strong>预分词保存对应位置信息的实现示例</strong></p>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">def</span> <span class="pl-en">btp_hex_list</span>(<span class="pl-s1">text</span>):
+    <span class="pl-s">"""</span>
+<span class="pl-s">    UTF-8字节级预分词，返回：</span>
+<span class="pl-s">        1. tokens: 每个字符的字节序列+位置信息</span>
+<span class="pl-s">        2. t: 所有字节的十六进制字符串列表</span>
+<span class="pl-s">    """</span>
+    <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> []
+    <span class="pl-s1">t</span> <span class="pl-c1">=</span> []
+    <span class="pl-k">for</span> <span class="pl-s1">idx</span>, <span class="pl-s1">char</span> <span class="pl-c1">in</span> <span class="pl-en">enumerate</span>(<span class="pl-s1">text</span>):
+        <span class="pl-s1">utf8_bytes</span> <span class="pl-c1">=</span> <span class="pl-s1">char</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'utf-8'</span>)
+        <span class="pl-s1">hex_bytes</span> <span class="pl-c1">=</span> <span class="pl-s">' '</span>.<span class="pl-c1">join</span>(<span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">b</span>:02X<span class="pl-kos">}</span></span>"</span> <span class="pl-k">for</span> <span class="pl-s1">b</span> <span class="pl-c1">in</span> <span class="pl-s1">utf8_bytes</span>)
+        <span class="pl-s1">tokens</span>.<span class="pl-c1">append</span>({
+            <span class="pl-s">'char'</span>: <span class="pl-s1">char</span>,
+            <span class="pl-s">'bytes'</span>: <span class="pl-s1">hex_bytes</span>, <span class="pl-c"># 单个字符对应的UTF-8字节序列</span>
+            <span class="pl-s">'start'</span>: <span class="pl-s1">idx</span>,   <span class="pl-c"># 文本信息起始位置</span>
+            <span class="pl-s">'end'</span>: <span class="pl-s1">idx</span> <span class="pl-c1">+</span> <span class="pl-c1">1</span>   <span class="pl-c"># 文本信息结束位置</span>
+        })
+        <span class="pl-s1">t</span>.<span class="pl-c1">extend</span>([<span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">b</span>:02X<span class="pl-kos">}</span></span>"</span> <span class="pl-k">for</span> <span class="pl-s1">b</span> <span class="pl-c1">in</span> <span class="pl-s1">utf8_bytes</span>])
+    <span class="pl-k">return</span> <span class="pl-s1">tokens</span>, <span class="pl-s1">t</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+   <span class="pl-s1">text</span> <span class="pl-c1">=</span> <span class="pl-s">"Hi，你好🐋"</span>
+   <span class="pl-s1">tokens</span>, <span class="pl-s1">t</span> <span class="pl-c1">=</span> <span class="pl-en">btp_hex_list</span>(<span class="pl-s1">text</span>)
+   <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">tokens</span>:
+       <span class="pl-en">print</span>(<span class="pl-s1">i</span>)
+   <span class="pl-en">print</span>(<span class="pl-s1">t</span>)</pre></div>
+<p>输入</p>
+<blockquote>
+<p>"Hi，你好"</p>
+</blockquote>
+<p>输出字节编码结果</p>
+<blockquote>
+<p>['48', '69', 'EF', 'BC', '8C', 'E4', 'BD', 'A0', 'E5', 'A5', 'BD', 'F0', '9F', '90', '8B']</p>
+</blockquote>
+<h3>2.3 统计并迭代更新</h3>
+<p><strong>Step1</strong>  子词候选统计</p>
+<p>遍历语料以收集用于后续决策的统计信息，具体方法随算法不同而异</p>
+<ul>
+<li>BPE：统计当前字符、子词序列中相邻对的出现频次，每次贪心合并出现频次最高的相邻对，迭代构建词表——其决策仅基于频率统计。</li>
+<li>WordPiece：评估合并或保留某些子词组合对语料似然即语言模型性能的贡献，选择能显著提升语料拟合度的合并操作。</li>
+<li>Unigram：从一个过大的种子词表出发，初始化每个token的概率。</li>
+<li>SentencePiece：是一个语言无关的子词分词框架，提供统一的训练与编码流程，支持多种分词算法（如BPE和Unigram）。这些算法在同一框架下独立使用，而非直接融合使用，其互补性体现在不同任务和数据条件下的适用性差异。</li>
+</ul>
+<p><em>Tips:分词算法决定token的划分策略，而分词器则是将分词算法与词表、编码机制等组件结合起来形成一个可将原始文本转换为模型输入序列的完整处理流程。这里我们可以思考这几个分词算法的区别是什么？</em></p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>算法</th>
+<th>适用场景</th>
+<th>常见实现方式</th>
+<th>典型LLM / 模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://arxiv.org/pdf/1508.07909" rel="nofollow">BPE</a></td>
+<td>简单高效； 高频子词压缩效果好； 适合大规模语料</td>
+<td>字节级BPE 代码点级BPE</td>
+<td>GPT-2、GPT-3、GPT-4（tiktoken体系） LLaMA（改进BPE） RoBERTa</td>
+</tr>
+<tr>
+<td><a href="https://huggingface.co/learn/llm-course/en/chapter6/6" rel="nofollow">WordPiece</a></td>
+<td>控制词表大小； 减少OOV； 适合MLM类模型</td>
+<td>字符级、代码点级</td>
+<td>BERT（原始实现） DistilBERT 早期RoBERTa（兼容）</td>
+</tr>
+<tr>
+<td><a href="https://arxiv.org/abs/1808.06226" rel="nofollow">Unigram LM</a></td>
+<td>概率建模子词； 对低频词更友好； 多语言适配强</td>
+<td>SentencePiece（Unigram模式） 支持byte-fallback</td>
+<td>T5、mT5 UL2 Gemma（Google系）</td>
+</tr>
+<tr>
+<td><a href="https://arxiv.org/pdf/1804.10959" rel="nofollow">SentencePiece</a>（框架）</td>
+<td>语言无关； 端到端训练tokenizer； 适合多语种</td>
+<td><strong>BPE或 Unigram的训练框架</strong>（不是新算法） 支持byte-fallback</td>
+<td>LLaMA（使用SP-BPE） DeepSeek系列</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p><em>总体来说，以上四种子词分词算法各有特点，没有哪一种是绝对最好的。选择算法时应根据具体的文本内容（语料分布）、任务类型（理解或生成）、词表规模以及是否需要处理多语言来决定，这样才能让训练出来的LLM模型发挥最佳性能。</em></p>
+<blockquote>
+<p><a href="https://ai.younglimit.com/deep-learning/nlp-pretraining/encoder-decoder-bart-and-t5/t5" rel="nofollow">T5</a>（Text-to-Text Transfer Transformer）是Google在2019年提出的一种基于Transformer的预训练语言模型框架。其核心思想是将所有自然语言处理任务统一表示为“文本到文本”的形式，从而实现多任务统一建模。在此基础上，Google后续提出了一系列扩展模型，包括：</p>
+<ul>
+<li>mT5：在多语言语料上预训练的T5扩展版本，支持跨语言任务；</li>
+<li>UL2：一种统一的预训练范式，通过混合多种去噪目标（类似BERT、T5的目标任务），提升模型在不同下游任务的泛化能力。</li>
+</ul>
+<p>从T5的任务表示统一，到mT5的跨语言扩展，再到UL2在预训练阶段对多种去噪目标的<strong>统一联合优化</strong>，这一演化路径逐步实现了<strong>从“任务层统一”到“数据分布扩展”再到“训练信号统一”的范式升级</strong>，使语言模型能够在<strong>共享参数空间中学习更具普适性的条件分布</strong>，从而显著增强其跨任务与跨分布的泛化能力。</p>
+<ul>
+<li>LLM能力的提升可以看成是“统一性不断增强”的过程*</li>
+</ul>
+</blockquote>
+<p><strong>Step2</strong>  子词候选统计迭代更新</p>
+<p>BPE、WordPiece、Unigram、SentencePiece这四种迭代算法简要分析：</p>
+<ul>
+<li>BPE算法：可以借助第一步子词候选统计数据作为初始化数据，进行单个token合并形成新的token，然后在多次迭代过程中动态统计共现次数，得到新的token。</li>
+<li>WordPiece算法：会在迭代过程中动态统计当前词汇表中所有相邻子词对的出现情况。其关键并非简单合并频率最高的对子，而是优先选择能最大提升语料整体似然的子词对，从而形成更有表征意义的token，一个常用的近似评分为：</li>
+</ul>
+<p>$$
+\text{score}(A,B)=\frac{P(A,B)}{P(A) \times P(B)}
+$$</p>
+<blockquote>
+<p>该比值衡量A与B的“关联性”是否强于独立出现时的期望。如果score&gt;1，则说明A与B的结合比随机独立出现更有义，更可能被WordPiece合并。【Google没有公开WordPiece算法详情，这里参考<a href="https://huggingface.co/learn/llm-course/en/chapter6/6" rel="nofollow">huggingface相关原理介绍</a>】</p>
+</blockquote>
+<ul>
+<li>Unigram算法：它基于一个子词概率语言模型，将一个句子的概率定义为其所有可能分词方式概率的总和。核心思想是通过迭代优化子词概率，使得整个语料的似然最大化。算法采用期望最大化（EM）方法，主要包含两步：</li>
+</ul>
+<p>①E步（期望步）：在当前词表和子词概率下，为语料中的每个句子计算最可能的分词方式或前n个高概率分词方案，并据此估计每个子词在语料中的期望使用次数。</p>
+<p>②M步（最大化步）：根据E步的统计结果，更新每个子词的概率，使整体语料的似然最大化。</p>
+<p>③在每次迭代中，模型会剪枝（淘汰）概率较低的token如丢弃底部10%~20%，从而逐步收敛到一个较小且优化后的词表，直到达到预设的目标词表大小。这种方法相比BPE或WordPiece更依赖概率建模，能够灵活处理不同长度的子词，并自然保留最能解释语料的高频段。</p>
+<p><em>Tips:<code class="notranslate">最大化语料似然</code>指的是在训练分词器时，学习一套能让训练语料整体概率最大的<code class="notranslate">token</code>划分方式和词表，使语料中的字符序列可以被更高概率、更常见的token组合表示。通俗地说就是把文本切成最顺畅、最符合语言统计规律的片段，让同一句话在不同地方都能被稳定、紧凑地切分成一致的token序列。</em></p>
+<ul>
+<li>SentencePiece算法：它是一个独立的分词工具和实现库，能够直接从原始文本训练子词模型，因此无需用户在外部显式执行<a href="#22-%E9%A2%84%E5%88%86%E8%AF%8D%E9%98%B6%E6%AE%B5">预分词步骤</a>。它在内部会将空格、词边界等信息编码为特殊字符（训练输出中常见的<code class="notranslate">▁</code>用于表示词首空格），从而可以将空格也作为建表对象之一，接着会在这些初始token上应用BPE或Unigram算法，生成最终的token词表及映射。</li>
+</ul>
+<p>这个迭代过程中需要保持特殊控制token（如<code class="notranslate">&lt;PAD&gt;</code>、<code class="notranslate">&lt;UNK&gt;</code>、<code class="notranslate">&lt;CLS&gt;</code>、<code class="notranslate">&lt;MASK&gt;</code>等），在分词器迭代更新过程中不参与修改，这样可以确保它们的词——数字映射保持固定，编码后的离散数字序列能够准确还原为原始文本。同时，这些token不会在统计合并或概率优化中被拆分或覆盖，从而有效减少碎片化token的出现。无论使用BPE、WordPiece、SentencePiece还是Unigram等算法，这一策略都适用有助于保护关键token的完整性，保证模型训练和推理的一致性。</p>
+<blockquote>
+<p>需要注意的是——分词器优化的是输入的表示方式，它本身并不会让模型“理解”自然语言。而真正“理解”语言的能力是在后续<code class="notranslate">Transformer</code>参与的训练中获得的，但更合理的token划分会让输入分布更清晰一致从而间接提升模型训练效率和最终性能。</p>
+</blockquote>
+<p><strong>总结</strong>：分词器训练的核心是<ins>迭代更新候选子词 → 控制词表大小或收敛指标 → 监控质量指标</ins>，不同算法仅在“候选生成方式”和“迭代更新策略”上有差异。</p>
+<h3>2.4 输出产物并用于编码与解码</h3>
+<p><strong>Step1</strong>  导出核心产物，不管是使用哪一种分词算法，训练完成后都需要导出至少两个关键文件：</p>
+<div align="center">
+  <a target="_blank" rel="noopener noreferrer" href="./images/2-4-词表与合并规则文件.png"><img src="./images/2-4-词表与合并规则文件.png" alt="vocab、merges文件示例" width="800" style="max-width: 100%;"></a>
+  <p><em>图 4. vocab、merges文件示例</em></p>
+</div>
+<ul>
+<li><strong>vocab文件</strong>：记录所有token及其对应的id，是编码器和解码器的核心索引。</li>
+<li><strong>merges文件</strong>：按顺序记录所有子词合并规则或概率模型。二者共同决定tokenizer的编码与解码逻辑，并确保编码的可逆。</li>
+</ul>
+<p><strong>Step2</strong>  下游使用前的验证与评估</p>
+<ul>
+<li>将tokenizer应用于一部分验证集后，建议统计以下关键指标：
+<ul>
+<li><code class="notranslate">平均token数与最大长度分布</code> 直接影响显存占用、训练速度和推理效率。</li>
+<li><code class="notranslate">碎片化情况</code> 检查关键实体、专业术语是否被拆得过碎，避免影响模型理解。</li>
+<li><code class="notranslate">跨语言token平衡度</code> 多语言任务中需确保不同语言的常见模式都有足够的token支持。</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>  如果后续需要<strong>扩表</strong>如加入新领域术语、专业词或品牌名等，建议优先采用这些方式而非完全重训tokenizer：<strong>增量训练</strong>、<strong>加入新的merges项</strong>、<strong>清理极低频token</strong>。</p>
+<p>  并且，扩表后应进行一次<strong>回归测试</strong>，确保——与旧模型保持兼容且根据数字化编码可以还原回到最开始的输入文本、不发生token分配冲突或token耗尽问题。</p>
+</blockquote>
+<p><em>看到这里，我们就可以回答最开始的问题：如何评价一个好的tokenizer。</em></p>
+<hr>
+<h2>3 常用的分词器</h2>
+<p>我们上一小节了解到tokenizer的训练流程，接下来将介绍几种常见的分词器，并分析它们各自的核心思想与特点。</p>
+<h3>3.1 字符分词器</h3>
+<p><strong>字符分词器的原理介绍</strong></p>
+<p>这是最直观、最简单的分词方式，它将文本拆解为最小的字符单位即单个字符形如英语中的字母 <em>（a, b, c）</em> 或者中文里的单字 <em>（你，好）</em>。</p>
+<ul>
+<li><strong>优点：</strong>
+<ul>
+<li><strong>词表极小：</strong> 英语只需包含26个字母+符号；中文只需包含常用汉字（约几千个）。</li>
+<li><strong>无OOV问题：</strong> 任何生僻词都是由基础字符组成的，不会出现“未知词”。</li>
+</ul>
+</li>
+<li><strong>缺点：</strong>
+<ul>
+<li><strong>序列过长：</strong> 一句话变成字符后，长度会增加数倍，大大消耗LLM宝贵的上下文窗口，从而加大LLM的transformer计算显存消耗。</li>
+<li><strong>语义稀疏：</strong> 单个字符（如t）通常不具备独立的语义，模型需要更深的网络层数来组合出意义。</li>
+</ul>
+</li>
+</ul>
+<p><strong><a href="#53-%E9%99%84%E5%BD%953%E5%AD%97%E7%AC%A6%E5%88%86%E8%AF%8D%E5%99%A8">字符分词器的代码运行</a>的输出分析</strong></p>
+<p>输入</p>
+<blockquote>
+<p>hi，很好的，terrific！</p>
+</blockquote>
+<p>输出</p>
+<blockquote>
+<p>编码ID: [104, 105, 65292, 24456, 22909, 30340, 65292, 116, 101, 114, 114, 105, 102, 105, 99, 65281, 128011]</p>
+<p>压缩比率: 0.47058823529411764</p>
+</blockquote>
+<h3>3.2 字节分词器</h3>
+<p><strong>字节分词器的原理介绍</strong></p>
+<p>计算机底层存储文本的本质上都是<strong>字节</strong>，在UTF-8编码中，英文通常占1个字节，汉字通常占3个字节。字节分词器直接对二进制字节进行操作。</p>
+<ul>
+<li><strong>核心逻辑：</strong> 不再维护“字符”的词表，而是维护一个大小为256的基础词表（0x00到0xFF）。</li>
+<li><strong>应用：</strong> 现代LLM如GPT-4, Llama通常不单独使用纯字节分词，而是将字节作为BPE的基础单位即BBPE，这样可以彻底解决跨语言和特殊符号如emoji 等的编码问题。</li>
+</ul>
+<p><strong><a href="#54-%E9%99%84%E5%BD%954bpe%E5%AD%97%E7%AC%A6%E7%BA%A7%E5%AD%97%E8%8A%82%E7%BA%A7%E7%9A%84%E5%88%86%E8%AF%8D%E5%99%A8%E6%95%88%E6%9E%9C%E5%AF%B9%E6%AF%94">BPE、字符级、字节级的分词器效果对比示例</a>的输出分析</strong></p>
+<p>输入</p>
+<blockquote>
+<p>Hello, ! 你好!</p>
+</blockquote>
+<p>输出</p>
+<blockquote>
+<p>原始字符串： Hello, ! 你好!</p>
+<p>原始字节长度： 20</p>
+<p>字节级、字符级、BPE的token数量分别为: 20、13、11</p>
+<p>=== 压缩率(byte/token) ===</p>
+<p>字节级: 1.00</p>
+<p>字符级: 1.54</p>
+<p>BPE: 1.82</p>
+<p>=== 结论 ===</p>
+<ol>
+<li>字节级：无压缩，最稳定</li>
+<li>字符号级：用UTF-8字符压缩（中文/emoji更明显）</li>
+<li>BPE：通过学习高频子串，实现真正“数据驱动压缩”</li>
+</ol>
+<p>由此可得，BPE压缩效果最好（最接近真实LLM tokenizer）</p>
+</blockquote>
+<p>值得注意的是<strong>字节级分词器的压缩比恒等于1</strong>，原因在于：</p>
+<ul>
+<li>输入文本中单个字符首先被编码为UTF-8字节序列；</li>
+<li>字节级分词器将每一个UTF-8字节（0-255）直接作为一个token；</li>
+<li>因此<code class="notranslate">token数量=UTF-8字节数</code>。</li>
+</ul>
+<p>所以</p>
+<p>$$
+compression_{ratio}
+= \frac{\text{UTF-8 字节长度}}{\text{token 数量}}
+= \frac{N}{N}
+= 1
+$$</p>
+<p><strong>也就是说，字节级分词器完全不具备压缩能力即每个字节对应一个token，不会产生更长或更短的词片段。</strong></p>
+<h3>3.3 词级分词器</h3>
+<p><strong>词级分词器的原理介绍</strong></p>
+<p>在深度学习早期（如RNN时代）这是最主流的方法。它基于空格（英文）或分词算法（中文）将文本切分为具备独立语义的“词”。</p>
+<ul>
+<li><strong>优点：</strong> Token保留了完整的语义信息比如"apple" 直接对应一个Token ID...。</li>
+<li><strong>缺点：</strong>
+<ul>
+<li><strong>词表爆炸：</strong> 英语中 <code class="notranslate">look, looks, looked, looking</code> 会被视为4个完全不同的ID，导致词表巨大几十万甚至上百万。</li>
+<li><strong>OOV 问题严重：</strong> 遇到没见过的词如人名、新造词等，只能标记为<code class="notranslate">&lt;UNK&gt;</code> ，导致信息丢失从而影响LLM的表现能力。</li>
+</ul>
+</li>
+</ul>
+<p><strong><a href="#55-%E9%99%84%E5%BD%955%E8%AF%8D%E7%BA%A7%E5%88%86%E8%AF%8D%E5%99%A8">词级分词器的代码运行</a>的输出分析</strong></p>
+<p>输入</p>
+<blockquote>
+<p>It's so supercalifragilisticexpialidocious!</p>
+</blockquote>
+<p>输出</p>
+<blockquote>
+<p>基础正则分词结果：</p>
+<p>['It', "'", 's', ' ', 'so', ' ', 'supercalifragilisticexpialidocious', '!', '', '']</p>
+<p>deepseek风格分词结果：['It', "'", 's', ' ', 'so', ' ', 'supercalifragilisticexpialidocious', '!']</p>
+<p>词表大小： 7</p>
+<p>编码token IDs：[3, 2, 4, 0, 5, 0, 6, 1]</p>
+<p>压缩率： 6.375</p>
+</blockquote>
+<h3>3.4 BPE分词器</h3>
+<p><strong>BPE分词器的原理介绍</strong></p>
+<p>这是目前LLM（GPT, BERT, Llama等）最主流的分词算法，BPE是一种试图在<ins>字符级(粒度太细)</ins>和<ins>词级(粒度太粗)</ins>之间找到平衡。<strong>核心思想：</strong> 统计语料中相邻字符对出现的频率，迭代地将<strong>最频繁出现的字符对</strong>合并成一个新的Token。</p>
+<p><strong><a href="#56-%E9%99%84%E5%BD%956bpe%E5%88%86%E8%AF%8D%E5%99%A8%E7%AE%80%E6%98%93%E8%AE%AD%E7%BB%83">简易版BPE训练过程示例</a>的输出分析：</strong></p>
+<p>输入</p>
+<blockquote>
+<p>test_text = "敏捷的棕色狐狸"</p>
+</blockquote>
+<p>输出</p>
+<blockquote>
+<p>BPE合并: [(' ', '<code class="notranslate">&lt;/w&gt;</code>'), ('t', 'h'), ('th', 'e'), ('the', '<code class="notranslate">&lt;/w&gt;</code>'), ('这', '只'), ('这只', '猫'), ('这只猫', '<code class="notranslate">&lt;/w&gt;</code>'), ('', '<code class="notranslate">&lt;/w&gt;</code>'), ('很', '可'), ('很可', '爱'), ('很可爱', '<code class="notranslate">&lt;/w&gt;</code>'), ('q', 'u'), ('qu', 'i'), ('qui', 'c'), ('quic', 'k'), ('quick', '<code class="notranslate">&lt;/w&gt;</code>'), ('b', 'r'), ('br', 'o'), ('bro', 'w'), ('brow', 'n')]</p>
+<p>编码: ['敏', '捷', '的', '棕', '色', '狐', '狸', <code class="notranslate">&lt;/w&gt;</code>, '', '<code class="notranslate">&lt;/w&gt;</code>']</p>
+</blockquote>
+<p>在BPE编码阶段，如果没有<code class="notranslate">&lt;/w&gt;</code>算法可能把<code class="notranslate">the</code>错误地拆成'th'、'e'或在后续合并时与其他token错误合并。加上<code class="notranslate">&lt;/w&gt;</code>后，<code class="notranslate">the</code>会被表示为['t', 'h', 'e', '<code class="notranslate">&lt;/w&gt;</code>']，BPE就知道这是一个完整单词的结尾不会跨单词错误合并，那么解码阶段去掉<code class="notranslate">&lt;/w&gt;</code>就能把token拼回<code class="notranslate">the</code>，保证原文恢复正确。</p>
+<p><em>因此，<code class="notranslate">&lt;/w&gt;</code>的核心作用是保证单词完整性，并让编码可逆即可以从相应的数字序列转化为原文。</em></p>
+<p><strong>4种分词器对比表</strong></p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th align="left">分词器类型</th>
+<th align="left">粒度</th>
+<th align="left">词表大小</th>
+<th align="left">词表外(OOV)</th>
+<th align="left">序列长度</th>
+<th align="left">代表模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">字符级</td>
+<td align="left">细</td>
+<td align="left">小 (100–5k)</td>
+<td align="left">无</td>
+<td align="left">非常长</td>
+<td align="left">Char-RNN</td>
+</tr>
+<tr>
+<td align="left">字节级</td>
+<td align="left">更细（字节）</td>
+<td align="left">很小 (~256–1k)</td>
+<td align="left">无</td>
+<td align="left">很长</td>
+<td align="left">GPT-2</td>
+</tr>
+<tr>
+<td align="left">词级</td>
+<td align="left">粗</td>
+<td align="left">极大 (&gt;100k)</td>
+<td align="left">严重</td>
+<td align="left">短</td>
+<td align="left">Word2Vec, GloVe</td>
+</tr>
+<tr>
+<td align="left"><strong>BPE</strong></td>
+<td align="left"><strong>中（自适应）</strong></td>
+<td align="left"><strong>适中 (30k–100k)</strong></td>
+<td align="left"><strong>极少</strong></td>
+<td align="left"><strong>适中</strong></td>
+<td align="left"><strong>GPT-4, Llama 3</strong></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p>除了<code class="notranslate">分词器的选择</code>与<code class="notranslate">训练语料</code>直接影响LLM的输入稀疏度与表示效率。用大规模、高质量且多样的语料训练分词器通常会<code class="notranslate">减少token碎片化</code>即生成更常见、更稳定的子词单元，使得同一段文字被编码为更少的token，同时在固定的上下文窗口长度下单位token承载更多实际信息，这意味着模型能够在有限窗口内“看到”更多内容——从而在一定程度上缓解因上下文长度受限引起的信息丢失。</p>
+<blockquote>
+<p>注意上述情况这依赖于语料的覆盖与质量；若语料偏颇或过度合并罕见词，反而可能损害少数语言或专业术语的表示能力。</p>
+</blockquote>
+<hr>
+<h2>4 分析DeepSeek的分词器</h2>
+<p>DeepSeek模型尤其是Coder系列，对代码和中英文都进行了高度优化，我们将加载DeepSeek Coder模型的官方分词器。</p>
+<h3>4.1 加载DeepSeek Tokenizer</h3>
+<p>请确保transformers库已安装</p>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-c"># 安装transformers库</span>
+<span class="pl-s1">pip</span> <span class="pl-s1">install</span> <span class="pl-s1">transformers</span> <span class="pl-s1">torch</span></pre></div>
+<p>我们将加载<code class="notranslate">deepseek-ai/deepseek-coder-6.7b-instruct</code>的分词器。</p>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">from</span> <span class="pl-s1">transformers</span> <span class="pl-k">import</span> <span class="pl-v">AutoTokenizer</span>
+<span class="pl-c"># 使用DeepSeek Coder系列模型的分词器</span>
+<span class="pl-c1">MODEL_NAME</span> <span class="pl-c1">=</span> <span class="pl-s">"deepseek-ai/deepseek-coder-6.7b-instruct"</span>
+<span class="pl-s1">tokenizer</span> <span class="pl-c1">=</span> <span class="pl-v">AutoTokenizer</span>.<span class="pl-c1">from_pretrained</span>(<span class="pl-c1">MODEL_NAME</span>)
+<span class="pl-en">print</span>(<span class="pl-s">f"成功加载模型: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-c1">MODEL_NAME</span><span class="pl-kos">}</span></span> 的分词器。"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">f"分词器词表大小V: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-en">len</span>(<span class="pl-s1">tokenizer</span>.<span class="pl-c1">get_vocab</span>())<span class="pl-kos">}</span></span>"</span>)</pre></div>
+<h3>4.2 DeepSeek分词器的处理逻辑</h3>
+<p>DeepSeek优化的字节级BPE词表通过对中文字词分布与代码缩进的精细建模，显著缩短了token序列长度，这种设计在确保语义完整性的同时，大幅提升了推理吞吐。本文将通过剖析中文分词实例，直观展现其如何通过高频词簇聚合来优化文本序列的效率。</p>
+<p><strong>举例分析: 中文文本处理</strong></p>
+<p>观察DeepSeek如何处理中文短语，通常它也会使用子词或单个汉字Token来提高效率。</p>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-s1">chinese_text</span> <span class="pl-c1">=</span> <span class="pl-s">"注意力机制是AI的核心技术。 🚀 🚀"</span>
+<span class="pl-c"># 编码</span>
+<span class="pl-s1">encoded_ids</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">encode</span>(<span class="pl-s1">chinese_text</span>, <span class="pl-s1">add_special_tokens</span><span class="pl-c1">=</span><span class="pl-c1">False</span>)
+<span class="pl-c"># 解码回Token字符串 (用于观察子词)</span>
+<span class="pl-s1">tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">convert_ids_to_tokens</span>(<span class="pl-s1">encoded_ids</span>)
+<span class="pl-en">print</span>(<span class="pl-s">f"<span class="pl-cce">\n</span>原文: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">chinese_text</span><span class="pl-kos">}</span></span>"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">f"编码: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">tokens</span><span class="pl-kos">}</span></span>"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">f"IDs:<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">encoded_ids</span><span class="pl-kos">}</span></span>"</span>)</pre></div>
+<p>得到token字符串划分结果可能在显示上与原文有所差异这并不是编码本身出错，而是因为LLM所用的<strong>词表</strong>在训练过程中<ins>对某些字符或子词的覆盖不足</ins>（例如BPE训练不够充分），导致模型无法生成对应的token，从而在可读形式上看起来像“乱码”。通过增加训练语料量或进行充分的BPE训练，可以学习到更完整的token映射词表，从而解决这个问题，使中文、英文、emoji等字符都能被正确编码和解码。接下来是相应的解决办法即训练BPE：</p>
+<p><strong><a href="#57-%E9%99%84%E5%BD%957deepseek%E9%A3%8E%E6%A0%BC%E7%9A%84tokenizer%E7%AE%80%E6%98%93%E5%AE%9E%E7%8E%B0%E7%A4%BA%E4%BE%8B">DeepSeek的正则化处理+BPE训练示例</a>的输出分析：</strong></p>
+<p>输入测试样例</p>
+<blockquote>
+<p>注意力机制是AI的核心技术。</p>
+</blockquote>
+<p>输出分析</p>
+<blockquote>
+<p>本流程依据预设的分词算法将文本离散化为最小语义单元（token），并构建其与全局唯一数值ID及底层编码的确定性映射。相同字符（如空格、特定Emoji）在文中均指向一致的ID与编码序列，确保了特征表征的稳定性。</p>
+</blockquote>
+<p>从以上代码的运行结果可以看到，分词器中的<code class="notranslate">token ↔ id</code>映射只描述“这个token的内容”，并不包含它在句子中的任何位置信息。BPE或其他基于统计和概率的分词算法，其本质都是依据语料中的共现频率或概率分布，决定如何将常见的字符、字节或子串合并成更长、更高频的token。这类算法本身并不理解句子的语义，它更像一个纯统计模块，通过频率或概率原则对字符序列进行切分与合并，为模型<em>LLM</em>提供稳定而紧凑的离散输入单元。</p>
+<blockquote>
+<p>为什么DeepSeek要用latin1编解码?</p>
+<p>在DeepSeek的分词流程中最终处理得到的是数字化的token，但在BPE分词器训练阶段需要按“字符”操作。如果直接用UTF-8编解码，汉字或emoji等多字节字符在拆分为单字节时会出现不完整序列，Python会报错或替换，导致信息丢失。而latin-1是单字节编码，它把每个字节（0–255）机械映射为一个Unicode字符，保证任意字节序列都能完整、可逆地保存，从而让BPE或其他子词算法能把字节当作字符合并而不丢数据。简单来说使用latin-1是为了在分词器中安全地把原始字节当作字符处理，确保编码器阶段信息完整。</p>
+</blockquote>
+<h3>4.3 快速体验DeepSeek分词器</h3>
+<div align="center">
+  <a target="_blank" rel="noopener noreferrer" href="./images/2-5-DeepSeek分词器可视化.png"><img src="./images/2-5-DeepSeek分词器可视化.png" alt="DeepSeek分词器" width="800" style="max-width: 100%;"></a>
+  <p><em>图 5. DeepSeek分词器</em></p>
+</div>
+<p>这里输入文本信息为<em>你好 ，hello,  world !   ！</em>。</p>
+<blockquote>
+<p>通过这里的可视化展示<a href="https://tiktokenizer.vercel.app/?model=deepseek-ai%2FDeepSeek-R1" rel="nofollow">DeepSeek的分词器</a>输出，右边的最后一栏表示的是对应token ID映射，可以看到对于单独划分为一组token的空格，就算位置不同其ID值均为223。</p>
+</blockquote>
+<hr>
+<h2>5 附录（代码实验部分）</h2>
+<h3>5.1 附录1：数据脱敏处理示例</h3>
+<p>本示例基于Python实现，借助命名实体识别（Named Entity Recognition，NER） 技术来实现数据脱敏：</p>
+<p><em>简单来说，命名实体识别是自然语言处理（NLP）中的一项基础任务，它的作用就像一台“目标扫描仪”——从大量非结构化的文本中，自动识别并提取出具有特定意义的实体（如人名、地名、组织机构、时间等）</em></p>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-c"># 初始化命名实体识别（NER）流水线</span>
+<span class="pl-s1">ner_pipeline</span> <span class="pl-c1">=</span> <span class="pl-en">pipeline</span>(
+    <span class="pl-s">"ner"</span>,
+    <span class="pl-s1">model</span><span class="pl-c1">=</span><span class="pl-s">"ckiplab/bert-base-chinese-ner"</span>,
+    <span class="pl-s1">grouped_entities</span><span class="pl-c1">=</span><span class="pl-c1">True</span>  <span class="pl-c"># 将相邻的同类实体片段合并，例如“重”、“庆”合并为“重庆”</span>
+)
+
+<span class="pl-k">def</span> <span class="pl-en">ner_mask</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""</span>
+<span class="pl-s">    利用深度学习模型进行语义级别的脱敏（人名与地名）</span>
+<span class="pl-s">    """</span>
+    <span class="pl-s1">entities</span> <span class="pl-c1">=</span> <span class="pl-en">ner_pipeline</span>(<span class="pl-s1">text</span>)
+    <span class="pl-s1">spans</span> <span class="pl-c1">=</span> []
+    
+    <span class="pl-c"># 提取模型识别出的实体及其位置</span>
+    <span class="pl-k">for</span> <span class="pl-s1">ent</span> <span class="pl-c1">in</span> <span class="pl-s1">entities</span>:
+        <span class="pl-s1">label</span> <span class="pl-c1">=</span> <span class="pl-s1">ent</span>[<span class="pl-s">"entity_group"</span>]
+        <span class="pl-s1">start</span> <span class="pl-c1">=</span> <span class="pl-s1">ent</span>[<span class="pl-s">"start"</span>]
+        <span class="pl-s1">end</span> <span class="pl-c1">=</span> <span class="pl-s1">ent</span>[<span class="pl-s">"end"</span>]
+
+        <span class="pl-c"># 映射实体类型到脱敏占位符</span>
+        <span class="pl-k">if</span> <span class="pl-s1">label</span> <span class="pl-c1">==</span> <span class="pl-s">"PER"</span>:  <span class="pl-c"># Person: 人名</span>
+            <span class="pl-s1">spans</span>.<span class="pl-c1">append</span>((<span class="pl-s1">start</span>, <span class="pl-s1">end</span>, <span class="pl-s">"[NAME]"</span>))
+        <span class="pl-k">elif</span> <span class="pl-s1">label</span> <span class="pl-c1">==</span> <span class="pl-s">"LOC"</span>:  <span class="pl-c"># Location: 地名/地址</span>
+            <span class="pl-s1">spans</span>.<span class="pl-c1">append</span>((<span class="pl-s1">start</span>, <span class="pl-s1">end</span>, <span class="pl-s">"[PLACE]"</span>))
+
+    <span class="pl-c"># 排序逻辑：按起始位置升序；如果起始位置相同，按长度降序（优先处理长实体）</span>
+    <span class="pl-s1">spans</span>.<span class="pl-c1">sort</span>(<span class="pl-s1">key</span><span class="pl-c1">=</span><span class="pl-k">lambda</span> <span class="pl-s1">x</span>: (<span class="pl-s1">x</span>[<span class="pl-c1">0</span>], <span class="pl-c1">-</span>(<span class="pl-s1">x</span>[<span class="pl-c1">1</span>] <span class="pl-c1">-</span> <span class="pl-s1">x</span>[<span class="pl-c1">0</span>])))
+
+    <span class="pl-c"># 解决冲突：去除重叠或包含关系的实体区间</span>
+    <span class="pl-s1">filtered_spans</span> <span class="pl-c1">=</span> []
+    <span class="pl-s1">last_end</span> <span class="pl-c1">=</span> <span class="pl-c1">-</span><span class="pl-c1">1</span>
+    <span class="pl-k">for</span> <span class="pl-s1">start</span>, <span class="pl-s1">end</span>, <span class="pl-s1">tag</span> <span class="pl-c1">in</span> <span class="pl-s1">spans</span>:
+        <span class="pl-k">if</span> <span class="pl-s1">start</span> <span class="pl-c1">&gt;=</span> <span class="pl-s1">last_end</span>:  <span class="pl-c"># 只有当当前实体起始位置在上一实体结束之后，才保留</span>
+            <span class="pl-s1">filtered_spans</span>.<span class="pl-c1">append</span>((<span class="pl-s1">start</span>, <span class="pl-s1">end</span>, <span class="pl-s1">tag</span>))
+            <span class="pl-s1">last_end</span> <span class="pl-c1">=</span> <span class="pl-s1">end</span>
+
+    <span class="pl-c"># 根据过滤后的区间重建文本</span>
+    <span class="pl-s1">result</span> <span class="pl-c1">=</span> []
+    <span class="pl-s1">last_idx</span> <span class="pl-c1">=</span> <span class="pl-c1">0</span>
+    <span class="pl-k">for</span> <span class="pl-s1">start</span>, <span class="pl-s1">end</span>, <span class="pl-s1">tag</span> <span class="pl-c1">in</span> <span class="pl-s1">filtered_spans</span>:
+        <span class="pl-s1">result</span>.<span class="pl-c1">append</span>(<span class="pl-s1">text</span>[<span class="pl-s1">last_idx</span>:<span class="pl-s1">start</span>]) <span class="pl-c"># 拼接非敏感部分</span>
+        <span class="pl-s1">result</span>.<span class="pl-c1">append</span>(<span class="pl-s1">tag</span>)                  <span class="pl-c"># 拼接占位符</span>
+        <span class="pl-s1">last_idx</span> <span class="pl-c1">=</span> <span class="pl-s1">end</span>
+    <span class="pl-s1">result</span>.<span class="pl-c1">append</span>(<span class="pl-s1">text</span>[<span class="pl-s1">last_idx</span>:])          <span class="pl-c"># 拼接剩余文本</span>
+
+    <span class="pl-k">return</span> <span class="pl-s">""</span>.<span class="pl-c1">join</span>(<span class="pl-s1">result</span>)
+
+
+<span class="pl-c"># 2. 脱敏流水线架构设计</span>
+<span class="pl-k">class</span> <span class="pl-v">DesensitizationPipeline</span>:
+    <span class="pl-s">"""</span>
+<span class="pl-s">    脱敏任务管理器：允许按顺序添加多个处理步骤</span>
+<span class="pl-s">    """</span>
+    <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>):
+        <span class="pl-s1">self</span>.<span class="pl-c1">steps</span>: <span class="pl-v">List</span>[<span class="pl-v">Callable</span>[[<span class="pl-s1">str</span>], <span class="pl-smi">str</span>]] <span class="pl-c1">=</span> []
+
+    <span class="pl-k">def</span> <span class="pl-en">add_step</span>(<span class="pl-s1">self</span>, <span class="pl-s1">func</span>: <span class="pl-v">Callable</span>[[<span class="pl-s1">str</span>], <span class="pl-smi">str</span>]):
+        <span class="pl-s">"""添加处理环节（如正则替换、NER替换等）"""</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">steps</span>.<span class="pl-c1">append</span>(<span class="pl-s1">func</span>)
+
+    <span class="pl-k">def</span> <span class="pl-en">run</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+        <span class="pl-s">"""按顺序执行所有脱敏步骤"""</span>
+        <span class="pl-k">for</span> <span class="pl-s1">step</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">steps</span>:
+            <span class="pl-s1">text</span> <span class="pl-c1">=</span> <span class="pl-en">step</span>(<span class="pl-s1">text</span>)
+        <span class="pl-k">return</span> <span class="pl-s1">text</span>
+
+<span class="pl-c"># 3. 具体处理步骤实现</span>
+<span class="pl-k">def</span> <span class="pl-en">normalize_text</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""文本预处理：去除首尾空格"""</span>
+    <span class="pl-k">return</span> <span class="pl-s1">text</span>.<span class="pl-c1">strip</span>()
+
+<span class="pl-c"># 高确定性规则（强特征：手机号、邮箱）</span>
+<span class="pl-k">def</span> <span class="pl-en">mask_phone</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""正则匹配 11 位中国手机号"""</span>
+    <span class="pl-k">return</span> <span class="pl-s1">re</span>.<span class="pl-c1">sub</span>(<span class="pl-s">r'1[3-9]\d{9}'</span>, <span class="pl-s">'[PHONE]'</span>, <span class="pl-s1">text</span>)
+
+<span class="pl-k">def</span> <span class="pl-en">mask_email</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""正则匹配常见邮箱格式"""</span>
+    <span class="pl-k">return</span> <span class="pl-s1">re</span>.<span class="pl-c1">sub</span>(<span class="pl-s">r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'</span>, <span class="pl-s">'[EMAIL]'</span>, <span class="pl-s1">text</span>)
+
+<span class="pl-c"># 中确定性规则（基于关键词上下文）</span>
+<span class="pl-k">def</span> <span class="pl-en">mask_address</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""通过“居住于”等关键词引导的地址匹配"""</span>
+    <span class="pl-k">return</span> <span class="pl-s1">re</span>.<span class="pl-c1">sub</span>(
+        <span class="pl-s">r'(居住于|现居住于|现居于|地址)([\u4e00-\u9fa5A-Za-z0-9]+)'</span>,
+        <span class="pl-s">r'\1[PLACE]'</span>,
+        <span class="pl-s1">text</span>
+    )
+
+<span class="pl-c"># 低确定性规则（基于语法结构的简单兜底）</span>
+<span class="pl-k">def</span> <span class="pl-en">mask_name</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""</span>
+<span class="pl-s">    兜底策略：匹配出现在句首或标点后的“某某某的”结构</span>
+<span class="pl-s">    注：容易误伤，通常放在 NER 步骤之后作为补充</span>
+<span class="pl-s">    """</span>
+    <span class="pl-k">return</span> <span class="pl-s1">re</span>.<span class="pl-c1">sub</span>(
+        <span class="pl-s">r'(?:(?&lt;=^)|(?&lt;=[，。！？]))([\u4e00-\u9fa5]{2,3})(的)'</span>,
+        <span class="pl-s">r'[NAME]\2'</span>,
+        <span class="pl-s1">text</span>
+    )
+
+<span class="pl-k">def</span> <span class="pl-en">clean_punctuation</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-s">"""后处理环节：可根据需求规范化标点符号"""</span>
+    <span class="pl-k">return</span> <span class="pl-s1">text</span></pre></div>
+<p><a href="https://github.com/datawhalechina/diy-llm/blob/main/docs/zh/chapter2/de_identified_data_processing.py"> 数据脱敏处理完整代码</a></p>
+<h3>5.2 附录2：基于Unicode的划分策略</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">import</span> <span class="pl-s1">unicodedata</span>
+
+<span class="pl-k">def</span> <span class="pl-en">get_char_category</span>(<span class="pl-s1">ch</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-smi">str</span>:
+    <span class="pl-c"># 获取Unicode标准定义的分类（如'Lu'代表大写字母,'Po'代表其它标点）</span>
+    <span class="pl-s1">cat</span> <span class="pl-c1">=</span> <span class="pl-s1">unicodedata</span>.<span class="pl-c1">category</span>(<span class="pl-s1">ch</span>)
+
+    <span class="pl-c"># 判定是否为中文字符（常用基本汉字区间）</span>
+    <span class="pl-k">if</span> <span class="pl-s">'<span class="pl-cce">\u4e00</span>'</span> <span class="pl-c1">&lt;=</span> <span class="pl-s1">ch</span> <span class="pl-c1">&lt;=</span> <span class="pl-s">'<span class="pl-cce">\u9fff</span>'</span>:
+        <span class="pl-k">return</span> <span class="pl-s">"CJK"</span>
+    
+    <span class="pl-c"># 判定是否为数字</span>
+    <span class="pl-k">if</span> <span class="pl-s1">ch</span>.<span class="pl-c1">isdigit</span>():
+        <span class="pl-k">return</span> <span class="pl-s">"DIGIT"</span>
+    
+    <span class="pl-c"># 判定是否为英文字母（或其他语言的字母）</span>
+    <span class="pl-k">if</span> <span class="pl-s1">ch</span>.<span class="pl-c1">isalpha</span>():
+        <span class="pl-k">return</span> <span class="pl-s">"ALPHA"</span>
+
+    <span class="pl-c"># 判定是否为标点符号（Unicode 分类以 'P' 开头的均为标点）</span>
+    <span class="pl-k">if</span> <span class="pl-s1">cat</span>.<span class="pl-c1">startswith</span>(<span class="pl-s">"P"</span>):
+        <span class="pl-k">return</span> <span class="pl-s">"PUNCT"</span>
+
+    <span class="pl-c"># 其余字符（如 Emoji、空格、控制符等）统一归为 OTHER</span>
+    <span class="pl-k">return</span> <span class="pl-s">"OTHER"</span>
+
+
+<span class="pl-k">def</span> <span class="pl-en">segment_by_unicode_category</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>):
+    <span class="pl-k">if</span> <span class="pl-c1">not</span> <span class="pl-s1">text</span>:
+        <span class="pl-k">return</span> []
+    <span class="pl-s1">segments</span> <span class="pl-c1">=</span> []
+    <span class="pl-c"># 初始化缓冲区，放入第一个字符</span>
+    <span class="pl-s1">buffer</span> <span class="pl-c1">=</span> [<span class="pl-s1">text</span>[<span class="pl-c1">0</span>]]
+    <span class="pl-c"># 获取第一个字符的类别作为初始参考标准</span>
+    <span class="pl-s1">prev_type</span> <span class="pl-c1">=</span> <span class="pl-en">get_char_category</span>(<span class="pl-s1">text</span>[<span class="pl-c1">0</span>])
+
+    <span class="pl-c"># 第一阶段：线性扫描文本，按类别切分</span>
+    <span class="pl-k">for</span> <span class="pl-s1">ch</span> <span class="pl-c1">in</span> <span class="pl-s1">text</span>[<span class="pl-c1">1</span>:]:
+        <span class="pl-s1">curr_type</span> <span class="pl-c1">=</span> <span class="pl-en">get_char_category</span>(<span class="pl-s1">ch</span>)
+
+        <span class="pl-c"># 如果当前字符类别与前一个字符相同，则存入缓冲区合并</span>
+        <span class="pl-k">if</span> <span class="pl-s1">curr_type</span> <span class="pl-c1">==</span> <span class="pl-s1">prev_type</span>:
+            <span class="pl-s1">buffer</span>.<span class="pl-c1">append</span>(<span class="pl-s1">ch</span>)
+        <span class="pl-k">else</span>:
+            <span class="pl-c"># 类别发生变化，将缓冲区内容作为一个片段存入结果列表</span>
+            <span class="pl-s1">segments</span>.<span class="pl-c1">append</span>((<span class="pl-s">""</span>.<span class="pl-c1">join</span>(<span class="pl-s1">buffer</span>), <span class="pl-s1">prev_type</span>))
+            <span class="pl-c"># 重置缓冲区，开始记录新类别的字符</span>
+            <span class="pl-s1">buffer</span> <span class="pl-c1">=</span> [<span class="pl-s1">ch</span>]
+            <span class="pl-s1">prev_type</span> <span class="pl-c1">=</span> <span class="pl-s1">curr_type</span>
+
+    <span class="pl-c"># 处理最后一个留在缓冲区里的片段</span>
+    <span class="pl-s1">segments</span>.<span class="pl-c1">append</span>((<span class="pl-s">""</span>.<span class="pl-c1">join</span>(<span class="pl-s1">buffer</span>), <span class="pl-s1">prev_type</span>))
+
+    <span class="pl-c"># 第二阶段：提取分段后的字符串内容</span>
+    <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> [<span class="pl-s1">seg</span> <span class="pl-k">for</span> <span class="pl-s1">seg</span>, <span class="pl-s1">_</span> <span class="pl-c1">in</span> <span class="pl-s1">segments</span>]
+    <span class="pl-k">return</span> <span class="pl-s1">tokens</span>
+
+<span class="pl-c"># 测试运行</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+    <span class="pl-c"># 测试字符串包含：英文、Emoji、中文标点、中文、数字、英文标点</span>
+    <span class="pl-s1">s</span> <span class="pl-c1">=</span> <span class="pl-s">"Hello👋👋，Datawhale成立于2018年！！！"</span>
+    <span class="pl-s1">result</span> <span class="pl-c1">=</span> <span class="pl-en">segment_by_unicode_category</span>(<span class="pl-s1">s</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"原始文本:"</span>, <span class="pl-s1">s</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"分段结果:"</span>, <span class="pl-s1">result</span>)</pre></div>
+<h3>5.3 附录3：字符分词器</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate">   <span class="pl-c"># 字符Tokenizer</span>
+<span class="pl-k">class</span> <span class="pl-v">CharacterTokenizer</span>:
+    <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>):
+        <span class="pl-k">pass</span>  <span class="pl-c"># 不需要额外参数，直接用ord、chr</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">encode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        将字符串编码为字符索引列表（Unicode code points）</span>
+<span class="pl-s">        """</span>
+        <span class="pl-k">return</span> [<span class="pl-en">ord</span>(<span class="pl-s1">ch</span>) <span class="pl-k">for</span> <span class="pl-s1">ch</span> <span class="pl-c1">in</span> <span class="pl-s1">text</span>]
+
+    <span class="pl-k">def</span> <span class="pl-en">decode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">indices</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        将索引列表解码为字符串</span>
+<span class="pl-s">        """</span>
+        <span class="pl-k">return</span> <span class="pl-s">''</span>.<span class="pl-c1">join</span>([<span class="pl-en">chr</span>(<span class="pl-s1">i</span>) <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">indices</span>])
+
+<span class="pl-c"># 测试代码</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+    <span class="pl-s1">tokenizer</span> <span class="pl-c1">=</span> <span class="pl-en">CharacterTokenizer</span>()
+    <span class="pl-s1">string</span> <span class="pl-c1">=</span> <span class="pl-s">"hi，很好的，terrific！🐋"</span>  <span class="pl-c"># 测试字符串</span>
+
+    <span class="pl-c"># 编码</span>
+    <span class="pl-s1">indices</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">encode</span>(<span class="pl-s1">string</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"编码ID:"</span>, <span class="pl-s1">indices</span>)
+
+    <span class="pl-c"># 解码</span>
+    <span class="pl-s1">reconstructed_string</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">decode</span>(<span class="pl-s1">indices</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"解码:"</span>, <span class="pl-s1">reconstructed_string</span>)
+
+    <span class="pl-c"># 验证是否可逆</span>
+    <span class="pl-k">assert</span> <span class="pl-s1">string</span> <span class="pl-c1">==</span> <span class="pl-s1">reconstructed_string</span>, <span class="pl-s">"字符编码、解码不一致!"</span>
+
+    <span class="pl-c"># 计算词汇量（最大Unicode code point+1）</span>
+    <span class="pl-s1">vocabulary_size</span> <span class="pl-c1">=</span> <span class="pl-en">max</span>(<span class="pl-s1">indices</span>) <span class="pl-c1">+</span> <span class="pl-c1">1</span>
+    <span class="pl-en">print</span>(<span class="pl-s">"词汇量（上限）"</span>, <span class="pl-s1">vocabulary_size</span>)
+
+    <span class="pl-c"># 简单压缩率计算</span>
+    <span class="pl-k">def</span> <span class="pl-en">get_compression_ratio</span>(<span class="pl-s1">text</span>, <span class="pl-s1">indices</span>):
+        <span class="pl-c"># 压缩率 = 原字符串字节数/编码索引字节数</span>
+        <span class="pl-k">import</span> <span class="pl-s1">sys</span>
+        <span class="pl-s1">original_bytes</span> <span class="pl-c1">=</span> <span class="pl-en">len</span>(<span class="pl-s1">text</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'utf-8'</span>))
+        <span class="pl-s1">encoded_bytes</span> <span class="pl-c1">=</span> <span class="pl-en">len</span>(<span class="pl-s1">indices</span>) <span class="pl-c1">*</span> <span class="pl-c1">4</span>  <span class="pl-c"># 假设每个Unicode code point用4字节存储</span>
+        <span class="pl-k">return</span> <span class="pl-s1">original_bytes</span> <span class="pl-c1">/</span> <span class="pl-s1">encoded_bytes</span>
+
+    <span class="pl-s1">compression_ratio</span> <span class="pl-c1">=</span> <span class="pl-en">get_compression_ratio</span>(<span class="pl-s1">string</span>, <span class="pl-s1">indices</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"压缩比率:"</span>, <span class="pl-s1">compression_ratio</span>)</pre></div>
+<h3>5.4 附录4：BPE、字符级、字节级的分词器效果对比</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-c"># 字节级Tokenizer</span>
+<span class="pl-k">from</span> <span class="pl-s1">collections</span> <span class="pl-k">import</span> <span class="pl-v">Counter</span>
+<span class="pl-k">class</span> <span class="pl-v">ByteTokenizer</span>:
+ <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>):
+     <span class="pl-s1">self</span>.<span class="pl-c1">vocab_size</span> <span class="pl-c1">=</span> <span class="pl-c1">256</span>
+
+ <span class="pl-k">def</span> <span class="pl-en">encode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>: <span class="pl-smi">str</span>):
+     <span class="pl-k">return</span> <span class="pl-en">list</span>(<span class="pl-s1">text</span>.<span class="pl-c1">encode</span>(<span class="pl-s">"utf-8"</span>))
+
+ <span class="pl-k">def</span> <span class="pl-en">decode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">indices</span>):
+     <span class="pl-k">return</span> <span class="pl-en">bytes</span>(<span class="pl-s1">indices</span>).<span class="pl-c1">decode</span>(<span class="pl-s">"utf-8"</span>)
+
+<span class="pl-c"># 字符级Tokenizer</span>
+<span class="pl-k">class</span> <span class="pl-v">CharTokenizer</span>:
+ <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>):
+     <span class="pl-s1">self</span>.<span class="pl-c1">vocab</span> <span class="pl-c1">=</span> {}
+     <span class="pl-s1">self</span>.<span class="pl-c1">inverse_vocab</span> <span class="pl-c1">=</span> {}
+
+ <span class="pl-k">def</span> <span class="pl-en">encode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>: <span class="pl-smi">str</span>):
+     <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> []
+     <span class="pl-k">for</span> <span class="pl-s1">ch</span> <span class="pl-c1">in</span> <span class="pl-s1">text</span>:
+         <span class="pl-k">if</span> <span class="pl-s1">ch</span> <span class="pl-c1"><span class="pl-c1">not</span> <span class="pl-c1">in</span></span> <span class="pl-s1">self</span>.<span class="pl-c1">vocab</span>:
+             <span class="pl-s1">idx</span> <span class="pl-c1">=</span> <span class="pl-en">len</span>(<span class="pl-s1">self</span>.<span class="pl-c1">vocab</span>)
+             <span class="pl-s1">self</span>.<span class="pl-c1">vocab</span>[<span class="pl-s1">ch</span>] <span class="pl-c1">=</span> <span class="pl-s1">idx</span>
+             <span class="pl-s1">self</span>.<span class="pl-c1">inverse_vocab</span>[<span class="pl-s1">idx</span>] <span class="pl-c1">=</span> <span class="pl-s1">ch</span>
+         <span class="pl-s1">tokens</span>.<span class="pl-c1">append</span>(<span class="pl-s1">self</span>.<span class="pl-c1">vocab</span>[<span class="pl-s1">ch</span>])
+     <span class="pl-k">return</span> <span class="pl-s1">tokens</span>
+
+ <span class="pl-k">def</span> <span class="pl-en">decode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">indices</span>):
+     <span class="pl-k">return</span> <span class="pl-s">""</span>.<span class="pl-c1">join</span>(<span class="pl-s1">self</span>.<span class="pl-c1">inverse_vocab</span>[<span class="pl-s1">i</span>] <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">indices</span>)
+
+<span class="pl-c"># 计算压缩率（byte/token）</span>
+<span class="pl-k">def</span> <span class="pl-en">get_compression_ratio</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>, <span class="pl-s1">token_len</span>: <span class="pl-smi">int</span>):
+ <span class="pl-s1">input_byte_len</span> <span class="pl-c1">=</span> <span class="pl-en">len</span>(<span class="pl-s1">text</span>.<span class="pl-c1">encode</span>(<span class="pl-s">"utf-8"</span>))
+ <span class="pl-k">return</span> <span class="pl-s1">input_byte_len</span> <span class="pl-c1">/</span> <span class="pl-s1">token_len</span> <span class="pl-k">if</span> <span class="pl-s1">token_len</span> <span class="pl-c1">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">else</span> <span class="pl-c1">1</span>
+
+
+<span class="pl-c"># 简易 BPE Tokenizer</span>
+<span class="pl-k">class</span> <span class="pl-v">BPETokenizer</span>:
+ <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>, <span class="pl-s1">num_merges</span>):
+     <span class="pl-s1">self</span>.<span class="pl-c1">num_merges</span> <span class="pl-c1">=</span> <span class="pl-s1">num_merges</span>
+     <span class="pl-s1">self</span>.<span class="pl-c1">merges</span> <span class="pl-c1">=</span> {}  <span class="pl-c"># {(a,b): new_token_id}</span>
+     <span class="pl-s1">self</span>.<span class="pl-c1">vocab_size</span> <span class="pl-c1">=</span> <span class="pl-c1">256</span>  <span class="pl-c"># 从byte开始</span>
+
+ <span class="pl-k">def</span> <span class="pl-en">get_stats</span>(<span class="pl-s1">self</span>, <span class="pl-s1">tokens</span>):
+     <span class="pl-s1">pairs</span> <span class="pl-c1">=</span> <span class="pl-en">Counter</span>()
+     <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-en">len</span>(<span class="pl-s1">tokens</span>) <span class="pl-c1">-</span> <span class="pl-c1">1</span>):
+         <span class="pl-s1">pairs</span>[(<span class="pl-s1">tokens</span>[<span class="pl-s1">i</span>], <span class="pl-s1">tokens</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>])] <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+     <span class="pl-k">return</span> <span class="pl-s1">pairs</span>
+
+ <span class="pl-k">def</span> <span class="pl-en">merge_tokens</span>(<span class="pl-s1">self</span>, <span class="pl-s1">tokens</span>, <span class="pl-s1">pair</span>, <span class="pl-s1">new_token</span>):
+     <span class="pl-s1">i</span> <span class="pl-c1">=</span> <span class="pl-c1">0</span>
+     <span class="pl-s1">new_tokens</span> <span class="pl-c1">=</span> []
+     <span class="pl-k">while</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">tokens</span>):
+         <span class="pl-k">if</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">tokens</span>) <span class="pl-c1">-</span> <span class="pl-c1">1</span> <span class="pl-c1">and</span> (<span class="pl-s1">tokens</span>[<span class="pl-s1">i</span>], <span class="pl-s1">tokens</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>]) <span class="pl-c1">==</span> <span class="pl-s1">pair</span>:
+             <span class="pl-s1">new_tokens</span>.<span class="pl-c1">append</span>(<span class="pl-s1">new_token</span>)
+             <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">2</span>
+         <span class="pl-k">else</span>:
+             <span class="pl-s1">new_tokens</span>.<span class="pl-c1">append</span>(<span class="pl-s1">tokens</span>[<span class="pl-s1">i</span>])
+             <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+     <span class="pl-k">return</span> <span class="pl-s1">new_tokens</span></pre></div>
+<p><a href="https://github.com/datawhalechina/diy-llm/blob/main/docs/zh/chapter2/BPE_character_byte_level_word_segmentation_Comparison.py">BPE、字符级、字节级的分词器效果对比</a></p>
+<h3>5.5 附录5：词级分词器</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">import</span> <span class="pl-s1">regex</span>
+
+<span class="pl-c"># deepseek tokenizer中使用的经典正则表达式（简化版）</span>
+<span class="pl-c1">TOKENIZER_REGEX</span> <span class="pl-c1">=</span>  <span class="pl-s">r"\p{L}+|\p{N}+|[^\p{L}\p{N}\s]+|\s+"</span>
+
+<span class="pl-c"># 压缩率计算</span>
+<span class="pl-k">def</span> <span class="pl-en">get_compression_ratio</span>(<span class="pl-s1">text</span>: <span class="pl-smi">str</span>, <span class="pl-s1">segments</span>):
+    <span class="pl-s1">byte_len</span> <span class="pl-c1">=</span> <span class="pl-en">len</span>(<span class="pl-s1">text</span>.<span class="pl-c1">encode</span>(<span class="pl-s">"utf-8"</span>))
+    <span class="pl-s1">token_count</span> <span class="pl-c1">=</span> <span class="pl-en">len</span>(<span class="pl-s1">segments</span>)
+    <span class="pl-k">return</span> <span class="pl-s1">byte_len</span> <span class="pl-c1">/</span> <span class="pl-s1">token_count</span> <span class="pl-k">if</span> <span class="pl-s1">token_count</span> <span class="pl-c1">&gt;</span> <span class="pl-c1">0</span> <span class="pl-k">else</span> <span class="pl-c1">1</span>
+
+
+<span class="pl-c"># Word-level Tokenizer实现</span>
+<span class="pl-k">class</span> <span class="pl-v">WordTokenizer</span>:
+    <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>, <span class="pl-s1">pattern</span><span class="pl-c1">=</span><span class="pl-s">r"\w+|."</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        pattern: 正则表达式（默认基础版：把连续字母数字合成一个词）</span>
+<span class="pl-s">        """</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">pattern</span> <span class="pl-c1">=</span> <span class="pl-s1">pattern</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">word2id</span> <span class="pl-c1">=</span> {}
+        <span class="pl-s1">self</span>.<span class="pl-c1">id2word</span> <span class="pl-c1">=</span> {}
+
+    <span class="pl-k">def</span> <span class="pl-en">build_vocab</span>(<span class="pl-s1">self</span>, <span class="pl-s1">texts</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        根据训练文本列表建立词表</span>
+<span class="pl-s">        """</span>
+        <span class="pl-s1">vocab</span> <span class="pl-c1">=</span> <span class="pl-en">set</span>()
+        <span class="pl-k">for</span> <span class="pl-s1">text</span> <span class="pl-c1">in</span> <span class="pl-s1">texts</span>:
+            <span class="pl-s1">segments</span> <span class="pl-c1">=</span> <span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-s1">self</span>.<span class="pl-c1">pattern</span>, <span class="pl-s1">text</span>)
+            <span class="pl-s1">vocab</span>.<span class="pl-c1">update</span>(<span class="pl-s1">segments</span>)
+
+        <span class="pl-s1">vocab</span> <span class="pl-c1">=</span> <span class="pl-en">sorted</span>(<span class="pl-s1">vocab</span>)
+        <span class="pl-s1">self</span>.<span class="pl-c1">word2id</span> <span class="pl-c1">=</span> {<span class="pl-s1">w</span>: <span class="pl-s1">i</span> <span class="pl-k">for</span> <span class="pl-s1">i</span>, <span class="pl-s1">w</span> <span class="pl-c1">in</span> <span class="pl-en">enumerate</span>(<span class="pl-s1">vocab</span>)}
+        <span class="pl-s1">self</span>.<span class="pl-c1">id2word</span> <span class="pl-c1">=</span> {<span class="pl-s1">i</span>: <span class="pl-s1">w</span> <span class="pl-k">for</span> <span class="pl-s1">w</span>, <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">word2id</span>.<span class="pl-c1">items</span>()}
+
+    <span class="pl-k">def</span> <span class="pl-en">encode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        文本 → 字符串片段 → token id列表</span>
+<span class="pl-s">        未登录词 UNK = -1</span>
+<span class="pl-s">        """</span>
+        <span class="pl-s1">segments</span> <span class="pl-c1">=</span> <span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-s1">self</span>.<span class="pl-c1">pattern</span>, <span class="pl-s1">text</span>)
+        <span class="pl-k">return</span> [<span class="pl-s1">self</span>.<span class="pl-c1">word2id</span>.<span class="pl-c1">get</span>(<span class="pl-s1">seg</span>, <span class="pl-c1">-</span><span class="pl-c1">1</span>) <span class="pl-k">for</span> <span class="pl-s1">seg</span> <span class="pl-c1">in</span> <span class="pl-s1">segments</span>], <span class="pl-s1">segments</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">decode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">ids</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        token ID → 原始片段 → 拼成字符串</span>
+<span class="pl-s">        """</span>
+        <span class="pl-k">return</span> <span class="pl-s">""</span>.<span class="pl-c1">join</span>(<span class="pl-s1">self</span>.<span class="pl-c1">id2word</span>.<span class="pl-c1">get</span>(<span class="pl-s1">i</span>, <span class="pl-s">"&lt;UNK&gt;"</span>) <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">ids</span>)
+
+<span class="pl-c"># 测试</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+
+    <span class="pl-s1">string</span> <span class="pl-c1">=</span> <span class="pl-s">"It's so supercalifragilisticexpialidocious!👋👋"</span>
+    <span class="pl-en">print</span>(<span class="pl-s">"原始字符串："</span>, <span class="pl-s1">string</span>)
+
+    <span class="pl-c"># 使用基础正则分词（基于空格和标点切分）</span>
+    <span class="pl-s1">basic_segments</span> <span class="pl-c1">=</span> <span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-s">r"\w+|."</span>, <span class="pl-s1">string</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"基础正则分词结果："</span>)
+    <span class="pl-en">print</span>(<span class="pl-s1">basic_segments</span>)
+
+    <span class="pl-c"># 使用deepseek风格正则</span>
+    <span class="pl-s1">segments</span> <span class="pl-c1">=</span> <span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-c1">TOKENIZER_REGEX</span>, <span class="pl-s1">string</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">f"deepseek风格分词结果：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">segments</span><span class="pl-kos">}</span></span>"</span>)
+
+    <span class="pl-c"># 构建词表</span>
+    <span class="pl-s1">tokenizer</span> <span class="pl-c1">=</span> <span class="pl-en">WordTokenizer</span>(<span class="pl-s1">pattern</span><span class="pl-c1">=</span><span class="pl-c1">TOKENIZER_REGEX</span>)
+    <span class="pl-s1">tokenizer</span>.<span class="pl-c1">build_vocab</span>([<span class="pl-s1">string</span>])
+
+    <span class="pl-en">print</span>(<span class="pl-s">"词表大小："</span>, <span class="pl-en">len</span>(<span class="pl-s1">tokenizer</span>.<span class="pl-c1">word2id</span>))
+
+    <span class="pl-c"># 编码</span>
+    <span class="pl-s1">ids</span>, <span class="pl-s1">segs</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">encode</span>(<span class="pl-s1">string</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">f"编码token IDs：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">ids</span><span class="pl-kos">}</span></span>"</span>)
+
+    <span class="pl-c"># 字节序列</span>
+    <span class="pl-s1">byte_tokens</span> <span class="pl-c1">=</span> [<span class="pl-s1">b</span> <span class="pl-k">for</span> <span class="pl-s1">b</span> <span class="pl-c1">in</span> <span class="pl-s1">string</span>.<span class="pl-c1">encode</span>(<span class="pl-s">"utf-8"</span>)]
+    <span class="pl-en">print</span>(<span class="pl-s">f"UTF-8字节序列：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">byte_tokens</span><span class="pl-kos">}</span></span>"</span>)
+
+    <span class="pl-en">print</span>(<span class="pl-s">f"编码segments：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">segs</span><span class="pl-kos">}</span></span>"</span>)
+
+    <span class="pl-c"># 解码</span>
+    <span class="pl-s1">decoded</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">decode</span>(<span class="pl-s1">ids</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"解码结果："</span>, <span class="pl-s1">decoded</span>)
+
+    <span class="pl-c"># 压缩率</span>
+    <span class="pl-s1">ratio</span> <span class="pl-c1">=</span> <span class="pl-en">get_compression_ratio</span>(<span class="pl-s1">string</span>, <span class="pl-s1">segs</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"压缩率："</span>, <span class="pl-s1">ratio</span>)</pre></div>
+<h3>5.6 附录6：BPE分词器简易训练</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">import</span> <span class="pl-s1">regex</span>
+<span class="pl-k">from</span> <span class="pl-s1">collections</span> <span class="pl-k">import</span> <span class="pl-v">Counter</span>
+
+<span class="pl-c"># DeepSeek风格正则</span>
+<span class="pl-c1">DEEPSEEK_REGEX</span> <span class="pl-c1">=</span> <span class="pl-s">r"\p{L}+|\p{N}+|[^\p{L}\p{N}\s]+|\s+"</span>
+
+<span class="pl-c"># 使用grapheme cluster保持emoji不被拆分</span>
+<span class="pl-k">def</span> <span class="pl-en">split_graphemes</span>(<span class="pl-s1">token</span>):
+    <span class="pl-k">return</span> <span class="pl-en">tuple</span>(<span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-s">r'\X'</span>, <span class="pl-s1">token</span>))
+
+<span class="pl-c"># BPE训练函数</span>
+<span class="pl-k">def</span> <span class="pl-en">train_bpe</span>(<span class="pl-s1">texts</span>, <span class="pl-s1">num_merges</span><span class="pl-c1">=</span><span class="pl-c1">50</span>):
+    <span class="pl-s">"""</span>
+<span class="pl-s">    texts: 文本列表（用于训练BPE）</span>
+<span class="pl-s">    num_merges: BPE 迭代合并的次数</span>
+<span class="pl-s">    """</span>
+    <span class="pl-c"># 1.构建初始vocab（字符级+&lt;/w&gt;结束符）</span>
+    <span class="pl-s1">vocab</span> <span class="pl-c1">=</span> <span class="pl-en">Counter</span>()
+    <span class="pl-k">for</span> <span class="pl-s1">text</span> <span class="pl-c1">in</span> <span class="pl-s1">texts</span>:
+        <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-c1">DEEPSEEK_REGEX</span>, <span class="pl-s1">text</span>)
+        <span class="pl-k">for</span> <span class="pl-s1">token</span> <span class="pl-c1">in</span> <span class="pl-s1">tokens</span>:
+            <span class="pl-s1">chars</span> <span class="pl-c1">=</span> <span class="pl-en">split_graphemes</span>(<span class="pl-s1">token</span>) <span class="pl-c1">+</span> (<span class="pl-s">'&lt;/w&gt;'</span>,)
+            <span class="pl-s1">vocab</span>[<span class="pl-s1">chars</span>] <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-s1">merges</span> <span class="pl-c1">=</span> []
+    <span class="pl-k">for</span> <span class="pl-s1">_</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-s1">num_merges</span>):
+        <span class="pl-c"># 统计相邻pair出现次数</span>
+        <span class="pl-s1">pairs</span> <span class="pl-c1">=</span> <span class="pl-en">Counter</span>()
+        <span class="pl-k">for</span> <span class="pl-s1">word</span>, <span class="pl-s1">freq</span> <span class="pl-c1">in</span> <span class="pl-s1">vocab</span>.<span class="pl-c1">items</span>():
+            <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-en">len</span>(<span class="pl-s1">word</span>)<span class="pl-c1">-</span><span class="pl-c1">1</span>):
+                <span class="pl-s1">pairs</span>[(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>], <span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>])] <span class="pl-c1">+=</span> <span class="pl-s1">freq</span>
+        <span class="pl-k">if</span> <span class="pl-c1">not</span> <span class="pl-s1">pairs</span>:
+            <span class="pl-k">break</span>
+
+        <span class="pl-c"># 找到最常见pair</span>
+        <span class="pl-s1">best_pair</span> <span class="pl-c1">=</span> <span class="pl-en">max</span>(<span class="pl-s1">pairs</span>, <span class="pl-s1">key</span><span class="pl-c1">=</span><span class="pl-s1">pairs</span>.<span class="pl-c1">get</span>)
+        <span class="pl-s1">merges</span>.<span class="pl-c1">append</span>(<span class="pl-s1">best_pair</span>)
+
+        <span class="pl-c"># 合并所有vocab中的该pair</span>
+        <span class="pl-s1">new_vocab</span> <span class="pl-c1">=</span> {}
+        <span class="pl-k">for</span> <span class="pl-s1">word</span>, <span class="pl-s1">freq</span> <span class="pl-c1">in</span> <span class="pl-s1">vocab</span>.<span class="pl-c1">items</span>():
+            <span class="pl-s1">w</span> <span class="pl-c1">=</span> []
+            <span class="pl-s1">i</span> <span class="pl-c1">=</span> <span class="pl-c1">0</span>
+            <span class="pl-k">while</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">word</span>):
+                <span class="pl-k">if</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">word</span>)<span class="pl-c1">-</span><span class="pl-c1">1</span> <span class="pl-c1">and</span> (<span class="pl-s1">word</span>[<span class="pl-s1">i</span>], <span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>]) <span class="pl-c1">==</span> <span class="pl-s1">best_pair</span>:
+                    <span class="pl-s1">w</span>.<span class="pl-c1">append</span>(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>]<span class="pl-c1">+</span><span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>])
+                    <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">2</span>
+                <span class="pl-k">else</span>:
+                    <span class="pl-s1">w</span>.<span class="pl-c1">append</span>(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>])
+                    <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+            <span class="pl-s1">new_vocab</span>[<span class="pl-en">tuple</span>(<span class="pl-s1">w</span>)] <span class="pl-c1">=</span> <span class="pl-s1">freq</span>
+        <span class="pl-s1">vocab</span> <span class="pl-c1">=</span> <span class="pl-s1">new_vocab</span>
+    <span class="pl-k">return</span> <span class="pl-s1">merges</span>, <span class="pl-s1">vocab</span>
+
+<span class="pl-c"># BPE Tokenizer类</span>
+<span class="pl-k">class</span> <span class="pl-v">BPETokenizer</span>:
+    <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>, <span class="pl-s1">merges</span>):
+        <span class="pl-s1">self</span>.<span class="pl-c1">merges</span> <span class="pl-c1">=</span> <span class="pl-s1">merges</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">encode_word</span>(<span class="pl-s1">self</span>, <span class="pl-s1">token</span>):
+        <span class="pl-c"># 初始分成字符+&lt;/w&gt;</span>
+        <span class="pl-s1">word</span> <span class="pl-c1">=</span> <span class="pl-en">list</span>(<span class="pl-en">split_graphemes</span>(<span class="pl-s1">token</span>)) <span class="pl-c1">+</span> [<span class="pl-s">'&lt;/w&gt;'</span>]
+        <span class="pl-c"># 按merge顺序依次合并</span>
+        <span class="pl-k">for</span> <span class="pl-s1">pair</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">merges</span>:
+            <span class="pl-s1">i</span> <span class="pl-c1">=</span> <span class="pl-c1">0</span>
+            <span class="pl-s1">new_word</span> <span class="pl-c1">=</span> []
+            <span class="pl-k">while</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">word</span>):
+                <span class="pl-k">if</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">word</span>)<span class="pl-c1">-</span><span class="pl-c1">1</span> <span class="pl-c1">and</span> (<span class="pl-s1">word</span>[<span class="pl-s1">i</span>], <span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>]) <span class="pl-c1">==</span> <span class="pl-s1">pair</span>:
+                    <span class="pl-s1">new_word</span>.<span class="pl-c1">append</span>(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>]<span class="pl-c1">+</span><span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>])
+                    <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">2</span>
+                <span class="pl-k">else</span>:
+                    <span class="pl-s1">new_word</span>.<span class="pl-c1">append</span>(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>])
+                    <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+            <span class="pl-s1">word</span> <span class="pl-c1">=</span> <span class="pl-s1">new_word</span>
+        <span class="pl-k">return</span> <span class="pl-s1">word</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">encode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>):
+        <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">regex</span>.<span class="pl-c1">findall</span>(<span class="pl-c1">DEEPSEEK_REGEX</span>, <span class="pl-s1">text</span>)
+        <span class="pl-s1">bpe_tokens</span> <span class="pl-c1">=</span> []
+        <span class="pl-k">for</span> <span class="pl-s1">t</span> <span class="pl-c1">in</span> <span class="pl-s1">tokens</span>:
+            <span class="pl-s1">bpe_tokens</span>.<span class="pl-c1">extend</span>(<span class="pl-s1">self</span>.<span class="pl-c1">encode_word</span>(<span class="pl-s1">t</span>))
+        <span class="pl-k">return</span> <span class="pl-s1">bpe_tokens</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">decode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">tokens</span>):
+        <span class="pl-c"># 拼接tokens并去掉结尾&lt;/w&gt;</span>
+        <span class="pl-s1">text</span> <span class="pl-c1">=</span> <span class="pl-s">''</span>.<span class="pl-c1">join</span>(<span class="pl-s1">tokens</span>).<span class="pl-c1">replace</span>(<span class="pl-s">'&lt;/w&gt;'</span>, <span class="pl-s">''</span>)
+        <span class="pl-k">return</span> <span class="pl-s1">text</span>
+
+<span class="pl-c"># 测试</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+    <span class="pl-s1">train_texts</span> <span class="pl-c1">=</span> [<span class="pl-s">"这只猫🐈很可爱"</span>, <span class="pl-s">"the quick brown fox jumps over the lazy 🐕‍🦺"</span>]
+    <span class="pl-s1">merges</span>, <span class="pl-s1">vocab</span> <span class="pl-c1">=</span> <span class="pl-en">train_bpe</span>(<span class="pl-s1">train_texts</span>, <span class="pl-s1">num_merges</span><span class="pl-c1">=</span><span class="pl-c1">20</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"BPE合并:"</span>, <span class="pl-s1">merges</span>)
+    <span class="pl-s1">tokenizer</span> <span class="pl-c1">=</span> <span class="pl-en">BPETokenizer</span>(<span class="pl-s1">merges</span>)
+    <span class="pl-s1">test_text</span> <span class="pl-c1">=</span> <span class="pl-s">"敏捷的棕色狐狸🦊"</span>
+    <span class="pl-s1">encoded</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">encode</span>(<span class="pl-s1">test_text</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"编码:"</span>, <span class="pl-s1">encoded</span>)
+    <span class="pl-s1">decoded</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">decode</span>(<span class="pl-s1">encoded</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"解码:"</span>, <span class="pl-s1">decoded</span>)</pre></div>
+<h3>5.7 附录7：DeepSeek风格的Tokenizer简易实现示例</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-s">"""</span>
+<span class="pl-s">DeepSeek-V3 Tokenizer简易实现示例</span>
+<span class="pl-s">（核心包含：字节级BPE+DeepSeek风格正则预分词）</span>
+<span class="pl-s">"""</span>
+<span class="pl-k">import</span> <span class="pl-s1">regex</span> <span class="pl-k">as</span> <span class="pl-s1">re</span>
+<span class="pl-k">from</span> <span class="pl-s1">collections</span> <span class="pl-k">import</span> <span class="pl-v">Counter</span>
+<span class="pl-k">from</span> <span class="pl-s1">typing</span> <span class="pl-k">import</span> <span class="pl-v">List</span>, <span class="pl-v">Tuple</span>, <span class="pl-v">Dict</span>, <span class="pl-v">Iterable</span>
+<span class="pl-k">import</span> <span class="pl-s1">json</span>
+<span class="pl-k">import</span> <span class="pl-s1">base64</span>
+
+
+<span class="pl-c"># 配置：DeepSeek 正则模式（预分词）</span>
+<span class="pl-c"># \p{L}+   连续字母（中文、英文、所有 Unicode 字母）</span>
+<span class="pl-c"># \p{N}+   连续数字</span>
+<span class="pl-c"># [^\p{L}\p{N}\s]+  非字母数字空白的字符（如标点、emoji）</span>
+<span class="pl-c"># \s+      连续空白符</span>
+<span class="pl-c1">DEEPSEEK_REGEX</span> <span class="pl-c1">=</span> <span class="pl-s">r"\p{L}+|\p{N}+|[^\p{L}\p{N}\s]+|\s+"</span>
+
+
+<span class="pl-c"># 基础函数：预分词与字节处理</span>
+<span class="pl-k">def</span> <span class="pl-en">pretokenize</span>(<span class="pl-s1">text</span>:<span class="pl-smi">str</span>):
+    <span class="pl-s">"""按DeepSeek风格的正则进行预分词"""</span>
+    <span class="pl-k">return</span> <span class="pl-s1">re</span>.<span class="pl-c1">findall</span>(<span class="pl-c1">DEEPSEEK_REGEX</span>, <span class="pl-s1">text</span>)
+
+<span class="pl-k">def</span> <span class="pl-en">bytes2tokens</span>(<span class="pl-s1">b</span>:<span class="pl-smi">bytes</span>):
+    <span class="pl-s">"""</span>
+<span class="pl-s">    将UTF-8字节序列转为latin1可表示的token列表。</span>
+<span class="pl-s">    每个字节0–255都能被latin1接映射到字符。</span>
+<span class="pl-s">    """</span>
+    <span class="pl-k">return</span> [<span class="pl-en">bytes</span>([<span class="pl-s1">x</span>]).<span class="pl-c1">decode</span>(<span class="pl-s">'latin1'</span>) <span class="pl-k">for</span> <span class="pl-s1">x</span> <span class="pl-c1">in</span> <span class="pl-s1">b</span>]
+
+<span class="pl-k">def</span> <span class="pl-en">tokens2bytes</span>(<span class="pl-s1">tokens</span>):
+    <span class="pl-s">"""将latin1 token列表重新转回原始bytes"""</span>
+    <span class="pl-k">return</span> <span class="pl-s">b''</span>.<span class="pl-c1">join</span>([<span class="pl-s1">t</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'latin1'</span>) <span class="pl-k">for</span> <span class="pl-s1">t</span> <span class="pl-c1">in</span> <span class="pl-s1">tokens</span>])
+
+
+<span class="pl-c"># BPE训练相关</span>
+<span class="pl-k">def</span> <span class="pl-en">build_corpus</span>(<span class="pl-s1">texts</span>):
+    <span class="pl-s">"""</span>
+<span class="pl-s">    构建byte-level语料。</span>
+<span class="pl-s">    步骤：预分词 → UTF-8编码 → 分解为单字节 → 作为初始token序列。</span>
+<span class="pl-s">    """</span>
+    <span class="pl-s1">corpus</span> <span class="pl-c1">=</span> []
+    <span class="pl-k">for</span> <span class="pl-s1">text</span> <span class="pl-c1">in</span> <span class="pl-s1">texts</span>:
+        <span class="pl-k">for</span> <span class="pl-s1">chunk</span> <span class="pl-c1">in</span> <span class="pl-en">pretokenize</span>(<span class="pl-s1">text</span>):
+            <span class="pl-s1">corpus</span>.<span class="pl-c1">append</span>(<span class="pl-en">bytes2tokens</span>(<span class="pl-s1">chunk</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'utf-8'</span>)))
+    <span class="pl-k">return</span> <span class="pl-s1">corpus</span>
+
+<span class="pl-k">def</span> <span class="pl-en">pair_freq</span>(<span class="pl-s1">corpus</span>: <span class="pl-v">List</span>[<span class="pl-v">List</span>[<span class="pl-smi">str</span>]]):
+    <span class="pl-s">"""统计所有token序列中相邻token pair的出现频率"""</span>
+    <span class="pl-s1">pairs</span> <span class="pl-c1">=</span> <span class="pl-en">Counter</span>()
+    <span class="pl-k">for</span> <span class="pl-s1">word</span> <span class="pl-c1">in</span> <span class="pl-s1">corpus</span>:
+        <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-en">len</span>(<span class="pl-s1">word</span>)<span class="pl-c1">-</span><span class="pl-c1">1</span>):
+            <span class="pl-s1">pairs</span>[(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>], <span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>])] <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">return</span> <span class="pl-s1">pairs</span>
+
+<span class="pl-k">def</span> <span class="pl-en">merge_pair</span>(<span class="pl-s1">word</span>: <span class="pl-v">List</span>[<span class="pl-smi">str</span>], <span class="pl-s1">pair</span>: <span class="pl-v">Tuple</span>[<span class="pl-smi">str</span>,<span class="pl-smi">str</span>]):
+    <span class="pl-s">"""将指定的token pair合并成一个token"""</span>
+    <span class="pl-s1">a</span>, <span class="pl-s1">b</span> <span class="pl-c1">=</span> <span class="pl-s1">pair</span>
+    <span class="pl-s1">merged</span> <span class="pl-c1">=</span> []
+    <span class="pl-s1">i</span> <span class="pl-c1">=</span> <span class="pl-c1">0</span>
+    <span class="pl-k">while</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">word</span>):
+        <span class="pl-k">if</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">word</span>)<span class="pl-c1">-</span><span class="pl-c1">1</span> <span class="pl-c1">and</span> <span class="pl-s1">word</span>[<span class="pl-s1">i</span>]<span class="pl-c1">==</span><span class="pl-s1">a</span> <span class="pl-c1">and</span> <span class="pl-s1">word</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>]<span class="pl-c1">==</span><span class="pl-s1">b</span>:
+            <span class="pl-s1">merged</span>.<span class="pl-c1">append</span>(<span class="pl-s1">a</span><span class="pl-c1">+</span><span class="pl-s1">b</span>)   <span class="pl-c"># 合并为一个新token</span>
+            <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">2</span>
+        <span class="pl-k">else</span>:
+            <span class="pl-s1">merged</span>.<span class="pl-c1">append</span>(<span class="pl-s1">word</span>[<span class="pl-s1">i</span>])
+            <span class="pl-s1">i</span> <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+    <span class="pl-k">return</span> <span class="pl-s1">merged</span>
+
+<span class="pl-k">def</span> <span class="pl-en">train_bpe</span>(<span class="pl-s1">texts</span>: <span class="pl-v">Iterable</span>[<span class="pl-smi">str</span>], <span class="pl-s1">vocab_size</span>: <span class="pl-smi">int</span><span class="pl-c1">=</span><span class="pl-c1">5000</span>, <span class="pl-s1">num_merges</span>: <span class="pl-smi">int</span><span class="pl-c1">=</span><span class="pl-c1">None</span>) <span class="pl-c1">-&gt;</span> <span class="pl-v">Tuple</span>[<span class="pl-v">List</span>[<span class="pl-v">Tuple</span>[<span class="pl-smi">str</span>,<span class="pl-smi">str</span>]], <span class="pl-v">List</span>[<span class="pl-smi">str</span>]]:
+    <span class="pl-s">"""</span>
+<span class="pl-s">    训练字节级BPE</span>
+<span class="pl-s">    """</span>
+    <span class="pl-s1">corpus</span> <span class="pl-c1">=</span> <span class="pl-en">build_corpus</span>(<span class="pl-s1">texts</span>)
+    <span class="pl-s1">base_tokens</span> <span class="pl-c1">=</span> [<span class="pl-en">bytes</span>([<span class="pl-s1">i</span>]).<span class="pl-c1">decode</span>(<span class="pl-s">'latin1'</span>) <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-c1">256</span>)]
+    <span class="pl-s1">merges</span>: <span class="pl-v">List</span>[<span class="pl-v">Tuple</span>[<span class="pl-smi">str</span>,<span class="pl-smi">str</span>]] <span class="pl-c1">=</span> []
+    <span class="pl-s1">merged_set</span> <span class="pl-c1">=</span> <span class="pl-en">set</span>()
+    <span class="pl-s1">cur_vocab_size</span> <span class="pl-c1">=</span> <span class="pl-c1">256</span>
+
+    <span class="pl-c"># 若未指定合并次数，则由target vocab来决定</span>
+    <span class="pl-s1">merge_steps</span> <span class="pl-c1">=</span> <span class="pl-s1">num_merges</span> <span class="pl-c1">or</span> (<span class="pl-s1">vocab_size</span> <span class="pl-c1">-</span> <span class="pl-c1">256</span>)
+
+    <span class="pl-k">for</span> <span class="pl-s1">_</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-s1">merge_steps</span>):
+        <span class="pl-s1">pfreq</span> <span class="pl-c1">=</span> <span class="pl-en">pair_freq</span>(<span class="pl-s1">corpus</span>)
+        <span class="pl-k">if</span> <span class="pl-c1">not</span> <span class="pl-s1">pfreq</span>:
+            <span class="pl-k">break</span>
+
+        <span class="pl-c"># 找到出现频率最高的pair</span>
+        <span class="pl-s1">best_pair</span>, <span class="pl-s1">_</span> <span class="pl-c1">=</span> <span class="pl-s1">pfreq</span>.<span class="pl-c1">most_common</span>(<span class="pl-c1">1</span>)[<span class="pl-c1">0</span>]
+
+        <span class="pl-k">if</span> <span class="pl-s1">cur_vocab_size</span> <span class="pl-c1">+</span> <span class="pl-c1">1</span> <span class="pl-c1">&gt;</span> <span class="pl-s1">vocab_size</span>:
+            <span class="pl-k">break</span>
+
+        <span class="pl-s1">merges</span>.<span class="pl-c1">append</span>(<span class="pl-s1">best_pair</span>)
+
+        <span class="pl-c"># 对整个语料进行合并替换</span>
+        <span class="pl-s1">corpus</span> <span class="pl-c1">=</span> [<span class="pl-en">merge_pair</span>(<span class="pl-s1">word</span>, <span class="pl-s1">best_pair</span>) <span class="pl-k">for</span> <span class="pl-s1">word</span> <span class="pl-c1">in</span> <span class="pl-s1">corpus</span>]
+
+        <span class="pl-c"># 将新token记入词表</span>
+        <span class="pl-s1">merged_set</span>.<span class="pl-c1">add</span>(<span class="pl-s1">best_pair</span>[<span class="pl-c1">0</span>]<span class="pl-c1">+</span><span class="pl-s1">best_pair</span>[<span class="pl-c1">1</span>])
+        <span class="pl-s1">cur_vocab_size</span> <span class="pl-c1">+=</span> <span class="pl-c1">1</span>
+
+    <span class="pl-c"># 追加特殊token</span>
+    <span class="pl-s1">special_tokens</span> <span class="pl-c1">=</span> [<span class="pl-s">"&lt;pad&gt;"</span>, <span class="pl-s">"&lt;bos&gt;"</span>, <span class="pl-s">"&lt;eos&gt;"</span>, <span class="pl-s">"&lt;unk&gt;"</span>]
+
+    <span class="pl-c"># vocab = 特殊token+ 256 byte token +BPE合并的新token</span>
+    <span class="pl-s1">vocab_tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">special_tokens</span> <span class="pl-c1">+</span> <span class="pl-s1">base_tokens</span> <span class="pl-c1">+</span> <span class="pl-en">sorted</span>(<span class="pl-s1">merged_set</span>)
+
+    <span class="pl-k">return</span> <span class="pl-s1">merges</span>, <span class="pl-s1">vocab_tokens</span>
+
+
+
+<span class="pl-c"># Tokenizer类</span>
+<span class="pl-k">class</span> <span class="pl-v">DeepSeekV3Tokenizer</span>:
+    <span class="pl-k">def</span> <span class="pl-en">__init__</span>(<span class="pl-s1">self</span>, <span class="pl-s1">merges</span>: <span class="pl-v">List</span>[<span class="pl-v">Tuple</span>[<span class="pl-smi">str</span>,<span class="pl-smi">str</span>]], <span class="pl-s1">vocab_tokens</span>: <span class="pl-v">List</span>[<span class="pl-smi">str</span>]):
+        <span class="pl-s1">self</span>.<span class="pl-c1">merges</span> <span class="pl-c1">=</span> <span class="pl-s1">merges</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">vocab_tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">vocab_tokens</span>
+
+        <span class="pl-c"># token ↔ id映射</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">token2id</span> <span class="pl-c1">=</span> {<span class="pl-s1">tok</span>:<span class="pl-s1">i</span> <span class="pl-k">for</span> <span class="pl-s1">i</span>, <span class="pl-s1">tok</span> <span class="pl-c1">in</span> <span class="pl-en">enumerate</span>(<span class="pl-s1">vocab_tokens</span>)}
+        <span class="pl-s1">self</span>.<span class="pl-c1">id2token</span> <span class="pl-c1">=</span> {<span class="pl-s1">i</span>:<span class="pl-s1">tok</span> <span class="pl-k">for</span> <span class="pl-s1">tok</span>,<span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>.<span class="pl-c1">items</span>()}
+
+        <span class="pl-c"># merges pair → 排序index</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">ranks</span> <span class="pl-c1">=</span> {<span class="pl-s1">pair</span>:<span class="pl-s1">i</span> <span class="pl-k">for</span> <span class="pl-s1">i</span>,<span class="pl-s1">pair</span> <span class="pl-c1">in</span> <span class="pl-en">enumerate</span>(<span class="pl-s1">merges</span>)}
+
+        <span class="pl-c"># 特殊token</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">pad_token</span> <span class="pl-c1">=</span> <span class="pl-s">"&lt;pad&gt;"</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">bos_token</span> <span class="pl-c1">=</span> <span class="pl-s">"&lt;bos&gt;"</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">eos_token</span> <span class="pl-c1">=</span> <span class="pl-s">"&lt;eos&gt;"</span>
+        <span class="pl-s1">self</span>.<span class="pl-c1">unk_token</span> <span class="pl-c1">=</span> <span class="pl-s">"&lt;unk&gt;"</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">encode_chunk</span>(<span class="pl-s1">self</span>, <span class="pl-s1">chunk</span>: <span class="pl-smi">str</span>) <span class="pl-c1">-&gt;</span> <span class="pl-v">List</span>[<span class="pl-smi">str</span>]:
+        <span class="pl-s">"""</span>
+<span class="pl-s">        对一个预分词做BPE编码：</span>
+<span class="pl-s">        - 转字节token</span>
+<span class="pl-s">        - 逐步应用merges</span>
+<span class="pl-s">        - 处理OOV：未知token拆回字节或标记为&lt;unk&gt;</span>
+<span class="pl-s">        """</span>
+        <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> <span class="pl-en">bytes2tokens</span>(<span class="pl-s1">chunk</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'utf-8'</span>))
+
+        <span class="pl-c"># 应用PE并规则</span>
+        <span class="pl-k">for</span> <span class="pl-s1">pair</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">merges</span>:
+            <span class="pl-s1">new_tokens</span> <span class="pl-c1">=</span> []
+            <span class="pl-s1">i</span> <span class="pl-c1">=</span> <span class="pl-c1">0</span>
+            <span class="pl-s1">a</span>,<span class="pl-s1">b</span> <span class="pl-c1">=</span> <span class="pl-s1">pair</span>
+            <span class="pl-k">while</span> <span class="pl-s1">i</span> <span class="pl-c1">&lt;</span> <span class="pl-en">len</span>(<span class="pl-s1">tokens</span>):
+                <span class="pl-k">if</span> <span class="pl-s1">i</span><span class="pl-c1">&lt;</span><span class="pl-en">len</span>(<span class="pl-s1">tokens</span>)<span class="pl-c1">-</span><span class="pl-c1">1</span> <span class="pl-c1">and</span> <span class="pl-s1">tokens</span>[<span class="pl-s1">i</span>]<span class="pl-c1">==</span><span class="pl-s1">a</span> <span class="pl-c1">and</span> <span class="pl-s1">tokens</span>[<span class="pl-s1">i</span><span class="pl-c1">+</span><span class="pl-c1">1</span>]<span class="pl-c1">==</span><span class="pl-s1">b</span>:
+                    <span class="pl-s1">new_tokens</span>.<span class="pl-c1">append</span>(<span class="pl-s1">a</span><span class="pl-c1">+</span><span class="pl-s1">b</span>)
+                    <span class="pl-s1">i</span><span class="pl-c1">+=</span><span class="pl-c1">2</span>
+                <span class="pl-k">else</span>:
+                    <span class="pl-s1">new_tokens</span>.<span class="pl-c1">append</span>(<span class="pl-s1">tokens</span>[<span class="pl-s1">i</span>])
+                    <span class="pl-s1">i</span><span class="pl-c1">+=</span><span class="pl-c1">1</span>
+            <span class="pl-s1">tokens</span> <span class="pl-c1">=</span> <span class="pl-s1">new_tokens</span>
+
+        <span class="pl-c"># OOV token拆回字节</span>
+        <span class="pl-s1">out</span> <span class="pl-c1">=</span> []
+        <span class="pl-k">for</span> <span class="pl-s1">t</span> <span class="pl-c1">in</span> <span class="pl-s1">tokens</span>:
+            <span class="pl-k">if</span> <span class="pl-s1">t</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>:
+                <span class="pl-s1">out</span>.<span class="pl-c1">append</span>(<span class="pl-s1">t</span>)
+            <span class="pl-k">else</span>:
+                <span class="pl-c"># 拆分成字节token，如果字节token也不在词表 → &lt;unk&gt;</span>
+                <span class="pl-s1">out</span>.<span class="pl-c1">extend</span>([<span class="pl-s1">ch</span> <span class="pl-k">if</span> <span class="pl-s1">ch</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">token2id</span> <span class="pl-k">else</span> <span class="pl-s1">self</span>.<span class="pl-c1">unk_token</span> <span class="pl-k">for</span> <span class="pl-s1">ch</span> <span class="pl-c1">in</span> <span class="pl-s1">t</span>])
+        <span class="pl-k">return</span> <span class="pl-s1">out</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">encode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">text</span>: <span class="pl-smi">str</span>, <span class="pl-s1">add_bos</span><span class="pl-c1">=</span><span class="pl-c1">False</span>, <span class="pl-s1">add_eos</span><span class="pl-c1">=</span><span class="pl-c1">False</span>, <span class="pl-s1">print_chunks</span><span class="pl-c1">=</span><span class="pl-c1">False</span>):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        编码完整文本：</span>
+<span class="pl-s">        - 先预分词</span>
+<span class="pl-s">        - 再逐chunk编码</span>
+<span class="pl-s">        - 可选打印中间过程</span>
+<span class="pl-s">        """</span>
+        <span class="pl-s1">ids</span> <span class="pl-c1">=</span> []
+
+        <span class="pl-k">if</span> <span class="pl-s1">add_bos</span>:
+            <span class="pl-s1">ids</span>.<span class="pl-c1">append</span>(<span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>[<span class="pl-s1">self</span>.<span class="pl-c1">bos_token</span>])
+            <span class="pl-k">if</span> <span class="pl-s1">print_chunks</span>: <span class="pl-en">print</span>(<span class="pl-s">f"[Special] &lt;bos&gt; -&gt; <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>[<span class="pl-s1">self</span>.<span class="pl-c1">bos_token</span>]<span class="pl-kos">}</span></span>"</span>)
+
+        <span class="pl-k">for</span> <span class="pl-s1">chunk</span> <span class="pl-c1">in</span> <span class="pl-en">pretokenize</span>(<span class="pl-s1">text</span>):
+            <span class="pl-s1">toks</span> <span class="pl-c1">=</span> <span class="pl-s1">self</span>.<span class="pl-c1">encode_chunk</span>(<span class="pl-s1">chunk</span>)
+            <span class="pl-s1">chunk_ids</span> <span class="pl-c1">=</span> [<span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>.<span class="pl-c1">get</span>(<span class="pl-s1">t</span>, <span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>[<span class="pl-s1">self</span>.<span class="pl-c1">unk_token</span>]) <span class="pl-k">for</span> <span class="pl-s1">t</span> <span class="pl-c1">in</span> <span class="pl-s1">toks</span>]
+
+            <span class="pl-k">if</span> <span class="pl-s1">print_chunks</span>:
+                <span class="pl-s1">readable</span> <span class="pl-c1">=</span> []
+                <span class="pl-k">for</span> <span class="pl-s1">t</span> <span class="pl-c1">in</span> <span class="pl-s1">toks</span>:
+                    <span class="pl-k">try</span>:
+                        <span class="pl-c"># 尝试恢复utf-8</span>
+                        <span class="pl-s1">r</span> <span class="pl-c1">=</span> <span class="pl-en">tokens2bytes</span>([<span class="pl-s1">t</span>]).<span class="pl-c1">decode</span>(<span class="pl-s">'utf-8'</span>, <span class="pl-s1">errors</span><span class="pl-c1">=</span><span class="pl-s">'ignore'</span>)
+                        <span class="pl-s1">readable</span>.<span class="pl-c1">append</span>(<span class="pl-s1">r</span> <span class="pl-k">if</span> <span class="pl-s1">r</span> <span class="pl-k">else</span> <span class="pl-s1">t</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'latin1'</span>).<span class="pl-c1">hex</span>())
+                    <span class="pl-k">except</span>:
+                        <span class="pl-s1">readable</span>.<span class="pl-c1">append</span>(<span class="pl-s1">t</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'latin1'</span>).<span class="pl-c1">hex</span>())
+
+                <span class="pl-en">print</span>(<span class="pl-s">f"[Chunk] <span class="pl-cce">\"</span><span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">chunk</span><span class="pl-kos">}</span></span><span class="pl-cce">\"</span> -&gt; <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">readable</span><span class="pl-kos">}</span></span> -&gt; IDs: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">chunk_ids</span><span class="pl-kos">}</span></span>"</span>)
+
+            <span class="pl-s1">ids</span>.<span class="pl-c1">extend</span>(<span class="pl-s1">chunk_ids</span>)
+
+        <span class="pl-k">if</span> <span class="pl-s1">add_eos</span>:
+            <span class="pl-s1">ids</span>.<span class="pl-c1">append</span>(<span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>[<span class="pl-s1">self</span>.<span class="pl-c1">eos_token</span>])
+            <span class="pl-k">if</span> <span class="pl-s1">print_chunks</span>: <span class="pl-en">print</span>(<span class="pl-s">f"[Special] &lt;eos&gt; -&gt; <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>[<span class="pl-s1">self</span>.<span class="pl-c1">eos_token</span>]<span class="pl-kos">}</span></span>"</span>)
+        <span class="pl-k">return</span> <span class="pl-s1">ids</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">decode</span>(<span class="pl-s1">self</span>, <span class="pl-s1">ids</span>: <span class="pl-v">Iterable</span>[<span class="pl-smi">int</span>]):
+        <span class="pl-s">"""</span>
+<span class="pl-s">        将ID序列还原为utf-8文本：</span>
+<span class="pl-s">        """</span>
+        <span class="pl-s1">byte_seq</span> <span class="pl-c1">=</span> <span class="pl-en">bytearray</span>()
+        <span class="pl-k">for</span> <span class="pl-s1">i</span> <span class="pl-c1">in</span> <span class="pl-s1">ids</span>:
+            <span class="pl-s1">tok</span> <span class="pl-c1">=</span> <span class="pl-s1">self</span>.<span class="pl-c1">id2token</span>.<span class="pl-c1">get</span>(<span class="pl-s1">i</span>, <span class="pl-s1">self</span>.<span class="pl-c1">unk_token</span>)
+            <span class="pl-k">if</span> <span class="pl-s1">tok</span> <span class="pl-c1">in</span> {<span class="pl-s1">self</span>.<span class="pl-c1">pad_token</span>, <span class="pl-s1">self</span>.<span class="pl-c1">bos_token</span>, <span class="pl-s1">self</span>.<span class="pl-c1">eos_token</span>}:
+                <span class="pl-k">continue</span>
+            <span class="pl-s1">byte_seq</span>.<span class="pl-c1">extend</span>(<span class="pl-en">tokens2bytes</span>(<span class="pl-en">list</span>(<span class="pl-s1">tok</span>)))
+        <span class="pl-k">return</span> <span class="pl-s1">byte_seq</span>.<span class="pl-c1">decode</span>(<span class="pl-s">'utf-8'</span>, <span class="pl-s1">errors</span><span class="pl-c1">=</span><span class="pl-s">'replace'</span>)
+
+    <span class="pl-k">def</span> <span class="pl-en">save</span>(<span class="pl-s1">self</span>, <span class="pl-s1">vocab_path</span>: <span class="pl-smi">str</span>, <span class="pl-s1">merges_path</span>: <span class="pl-smi">str</span>):
+
+        <span class="pl-c"># 保存vocab（token2id）</span>
+        <span class="pl-k">with</span> <span class="pl-en">open</span>(<span class="pl-s1">vocab_path</span>, <span class="pl-s">'w'</span>, <span class="pl-s1">encoding</span><span class="pl-c1">=</span><span class="pl-s">'utf-8'</span>) <span class="pl-k">as</span> <span class="pl-s1">f</span>:
+            <span class="pl-s1">json</span>.<span class="pl-c1">dump</span>(<span class="pl-s1">self</span>.<span class="pl-c1">token2id</span>, <span class="pl-s1">f</span>, <span class="pl-s1">ensure_ascii</span><span class="pl-c1">=</span><span class="pl-c1">False</span>, <span class="pl-s1">indent</span><span class="pl-c1">=</span><span class="pl-c1">2</span>)
+
+        <span class="pl-c"># 保存merges：每个token用base64</span>
+        <span class="pl-s1">merges_b64</span> <span class="pl-c1">=</span> []
+        <span class="pl-k">for</span> <span class="pl-s1">a</span>, <span class="pl-s1">b</span> <span class="pl-c1">in</span> <span class="pl-s1">self</span>.<span class="pl-c1">merges</span>:
+            <span class="pl-s1">a_bytes</span> <span class="pl-c1">=</span> <span class="pl-s1">a</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'latin1'</span>)
+            <span class="pl-s1">b_bytes</span> <span class="pl-c1">=</span> <span class="pl-s1">b</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'latin1'</span>)
+            <span class="pl-s1">merges_b64</span>.<span class="pl-c1">append</span>((
+                <span class="pl-s1">base64</span>.<span class="pl-c1">b64encode</span>(<span class="pl-s1">a_bytes</span>).<span class="pl-c1">decode</span>(<span class="pl-s">'ascii'</span>),
+                <span class="pl-s1">base64</span>.<span class="pl-c1">b64encode</span>(<span class="pl-s1">b_bytes</span>).<span class="pl-c1">decode</span>(<span class="pl-s">'ascii'</span>)
+            ))
+
+        <span class="pl-k">with</span> <span class="pl-en">open</span>(<span class="pl-s1">merges_path</span>, <span class="pl-s">'w'</span>, <span class="pl-s1">encoding</span><span class="pl-c1">=</span><span class="pl-s">'utf-8'</span>) <span class="pl-k">as</span> <span class="pl-s1">f</span>:
+            <span class="pl-s1">json</span>.<span class="pl-c1">dump</span>(<span class="pl-s1">merges_b64</span>, <span class="pl-s1">f</span>, <span class="pl-s1">ensure_ascii</span><span class="pl-c1">=</span><span class="pl-c1">False</span>, <span class="pl-s1">indent</span><span class="pl-c1">=</span><span class="pl-c1">2</span>)
+
+    <span class="pl-en">@<span class="pl-s1">classmethod</span></span>
+    <span class="pl-k">def</span> <span class="pl-en">load</span>(<span class="pl-s1">cls</span>, <span class="pl-s1">vocab_path</span>: <span class="pl-smi">str</span>, <span class="pl-s1">merges_path</span>: <span class="pl-smi">str</span>):
+
+        <span class="pl-c"># 加载vocab</span>
+        <span class="pl-k">with</span> <span class="pl-en">open</span>(<span class="pl-s1">vocab_path</span>, <span class="pl-s">'r'</span>, <span class="pl-s1">encoding</span><span class="pl-c1">=</span><span class="pl-s">'utf-8'</span>) <span class="pl-k">as</span> <span class="pl-s1">f</span>:
+            <span class="pl-s1">token2id</span> <span class="pl-c1">=</span> <span class="pl-s1">json</span>.<span class="pl-c1">load</span>(<span class="pl-s1">f</span>)
+        <span class="pl-s1">vocab_tokens</span> <span class="pl-c1">=</span> [<span class="pl-c1">None</span>] <span class="pl-c1">*</span> (<span class="pl-en">max</span>(<span class="pl-s1">token2id</span>.<span class="pl-c1">values</span>()) <span class="pl-c1">+</span> <span class="pl-c1">1</span>)
+        <span class="pl-k">for</span> <span class="pl-s1">tok</span>, <span class="pl-s1">idx</span> <span class="pl-c1">in</span> <span class="pl-s1">token2id</span>.<span class="pl-c1">items</span>():
+            <span class="pl-s1">vocab_tokens</span>[<span class="pl-s1">idx</span>] <span class="pl-c1">=</span> <span class="pl-s1">tok</span>
+
+        <span class="pl-c"># 加载merges（base64 → bytes → latin1）</span>
+        <span class="pl-k">with</span> <span class="pl-en">open</span>(<span class="pl-s1">merges_path</span>, <span class="pl-s">'r'</span>, <span class="pl-s1">encoding</span><span class="pl-c1">=</span><span class="pl-s">'utf-8'</span>) <span class="pl-k">as</span> <span class="pl-s1">f</span>:
+            <span class="pl-s1">merges_b64</span> <span class="pl-c1">=</span> <span class="pl-s1">json</span>.<span class="pl-c1">load</span>(<span class="pl-s1">f</span>)
+
+        <span class="pl-s1">merges</span> <span class="pl-c1">=</span> []
+        <span class="pl-k">for</span> <span class="pl-s1">a_b64</span>, <span class="pl-s1">b_b64</span> <span class="pl-c1">in</span> <span class="pl-s1">merges_b64</span>:
+            <span class="pl-s1">a</span> <span class="pl-c1">=</span> <span class="pl-s1">base64</span>.<span class="pl-c1">b64decode</span>(<span class="pl-s1">a_b64</span>).<span class="pl-c1">decode</span>(<span class="pl-s">'latin1'</span>)
+            <span class="pl-s1">b</span> <span class="pl-c1">=</span> <span class="pl-s1">base64</span>.<span class="pl-c1">b64decode</span>(<span class="pl-s1">b_b64</span>).<span class="pl-c1">decode</span>(<span class="pl-s">'latin1'</span>)
+            <span class="pl-s1">merges</span>.<span class="pl-c1">append</span>((<span class="pl-s1">a</span>, <span class="pl-s1">b</span>))
+        <span class="pl-k">return</span> <span class="pl-en">cls</span>(<span class="pl-s1">merges</span>, <span class="pl-s1">vocab_tokens</span>)
+
+
+<span class="pl-c"># 提供训练函数</span>
+<span class="pl-k">def</span> <span class="pl-en">train_tokenizer</span>(<span class="pl-s1">texts</span>, <span class="pl-s1">vocab_size</span><span class="pl-c1">=</span><span class="pl-c1">5000</span>, <span class="pl-s1">num_merges</span><span class="pl-c1">=</span><span class="pl-c1">None</span>):
+    <span class="pl-s1">merges</span>, <span class="pl-s1">vocab_tokens</span> <span class="pl-c1">=</span> <span class="pl-en">train_bpe</span>(<span class="pl-s1">texts</span>, <span class="pl-s1">vocab_size</span><span class="pl-c1">=</span><span class="pl-s1">vocab_size</span>, <span class="pl-s1">num_merges</span><span class="pl-c1">=</span><span class="pl-s1">num_merges</span>)
+    <span class="pl-k">return</span> <span class="pl-en">DeepSeekV3Tokenizer</span>(<span class="pl-s1">merges</span>, <span class="pl-s1">vocab_tokens</span>)
+
+<span class="pl-c"># 示例</span>
+<span class="pl-k">if</span> <span class="pl-s1">__name__</span> <span class="pl-c1">==</span> <span class="pl-s">"__main__"</span>:
+    <span class="pl-s1">texts</span> <span class="pl-c1">=</span> [
+        <span class="pl-s">"Transformer是AI的核心技术。"</span>,
+        <span class="pl-s">"DeepSeek分词器支持中文、英文、emoji等多语言。"</span>,
+        <span class="pl-s">"Hello, 世界! 🌍🚀"</span>,
+    ]
+
+    <span class="pl-en">print</span>(<span class="pl-s">"训练 Tokenizer (vocab_size=1024)"</span>)
+    <span class="pl-s1">tokenizer</span> <span class="pl-c1">=</span> <span class="pl-en">train_tokenizer</span>(<span class="pl-s1">texts</span>, <span class="pl-s1">vocab_size</span><span class="pl-c1">=</span><span class="pl-c1">1024</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">f"完成训练，词表大小: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-en">len</span>(<span class="pl-s1">tokenizer</span>.<span class="pl-c1">vocab_tokens</span>)<span class="pl-kos">}</span></span>"</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"-"</span><span class="pl-c1">*</span><span class="pl-c1">50</span>)
+
+    <span class="pl-s1">txt</span> <span class="pl-c1">=</span> <span class="pl-s">"注意力机制是AI的核心技术。 🚀 🚀"</span>
+    <span class="pl-en">print</span>(<span class="pl-s">f"编码文本: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">txt</span><span class="pl-kos">}</span></span>"</span>)
+    <span class="pl-s1">ids</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">encode</span>(<span class="pl-s1">txt</span>, <span class="pl-s1">add_bos</span><span class="pl-c1">=</span><span class="pl-c1">True</span>, <span class="pl-s1">add_eos</span><span class="pl-c1">=</span><span class="pl-c1">True</span>, <span class="pl-s1">print_chunks</span><span class="pl-c1">=</span><span class="pl-c1">True</span>)
+
+    <span class="pl-en">print</span>(<span class="pl-s">"-"</span><span class="pl-c1">*</span><span class="pl-c1">50</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"Token ID:"</span>, <span class="pl-s1">ids</span>)
+    <span class="pl-s1">decoded</span> <span class="pl-c1">=</span> <span class="pl-s1">tokenizer</span>.<span class="pl-c1">decode</span>(<span class="pl-s1">ids</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"解码结果:"</span>, <span class="pl-s1">decoded</span>)
+    <span class="pl-en">print</span>(<span class="pl-s">"是否可逆:"</span>, <span class="pl-s1">decoded</span> <span class="pl-c1">==</span> <span class="pl-s1">txt</span>)</pre></div>
+<h2>6 总结与测试题</h2>
+<h3>6.1 课程总结</h3>
+<p>在本章中，我们学习了分词器的基本原理、训练流程等。最后，我们还介绍了DeepSeek Coder模型的分词器，以及它在中文的文本处理中的应用。</p>
+<p>基于BPE算法构建的分词器在早期与部分现有LLM中被广泛采用，其核心原因在于该方法主要是统计频率驱动的贪心合并策略，实现简单、训练高效。</p>
+<blockquote>
+<p>但是，BPE并不是唯一选择，比如WordPiece、Unigram、SentencePiece等方法在不同模型中同样被广泛使用，只是它们在建模假设与优化目标上各有差异。</p>
+</blockquote>
+<p>tokenizer充当语言模型的输入输出接口，是模型与外部文本之间的桥梁，<strong>其核心作用是将连续的自然语言文本转换为离散的token序列，并映射为对应的整数ID，从而作为Transformer等模型结构的输入</strong>。在模型内部，这些离散token会被进一步映射为向量表示（embedding），并经过多层计算形成上下文相关的隐状态表征，这些表征构成了模型进行预测、泛化解决问题的基础。</p>
+<h3>6.2 测试题</h3>
+<p>1.BPE、WordPiece、Unigram、SentencePiece这四种分词算法的区别是什么，为什么现在一些LLM的tokenizer选择了基于BPE实现？</p>
+<p>2.如何衡量“一个好的分词器”，其在压缩效率与语义一致性之间应如何trade-off？</p>
+<p>3.分词器如何影响实际LLM的最终表现？</p>
+<p>4.有研究表明，视觉特征能够增强LLM的理解能力，但并非适用于所有语言任务。那么是否可以在视觉表征与离散token之间寻求一种动态“平衡点”：同时为模型提供两类表征方式，并借鉴MoE的思想设计轻量级动态路由，使模型能够在不同任务或文本片段中自动选择或融合最合适的embedding方法，从而显著提升跨场景的适配能力？</p>
+<p>5.借助微分子词模块、元学习或强化学习等方法，让分词器能够从少量对话或任务样本中自动发现最合适的token划分方式，从而降低下游任务对数据的依赖同时提升模型的鲁棒性和泛化能力？</p>
+<h2>参考资料</h2>
+<ul>
+<li><a href="https://huggingface.co/learn/llm-course/en/chapter6/1" rel="nofollow">hugging face介绍四种分词器算法</a></li>
+<li><a href="https://arxiv.org/pdf/1508.07909" rel="nofollow">BPE算法</a></li>
+<li><a href="https://stanford-cs336.github.io/spring2025-lectures/?trace=var%2Ftraces%2Flecture_01.json&amp;source=lecture_01.py&amp;line=238" rel="nofollow">CS336的Lecture1课程资料</a></li>
+<li><a href="https://tiktokenizer.vercel.app/?model=gpt-4-1106-preview" rel="nofollow">分词器</a></li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc3629" rel="nofollow">UTF-8字节序列</a></li>
+<li><a href="https://huggingface.co/learn/llm-course/en/chapter6/6" rel="nofollow">WordPiece</a></li>
+<li><a href="https://arxiv.org/abs/1808.06226" rel="nofollow">Unigram LM</a></li>
+<li><a href="https://arxiv.org/pdf/1804.10959" rel="nofollow">SentencePiece</a></li>
+<li><a href="https://ai.younglimit.com/deep-learning/nlp-pretraining/encoder-decoder-bart-and-t5/t5" rel="nofollow">T5</a></li>
+<li><a href="https://tiktokenizer.vercel.app/?model=deepseek-ai%2FDeepSeek-R1" rel="nofollow">DeepSeek的分词器</a></li>
+<li><a href="https://github.com/datawhalechina/diy-llm/blob/main/docs/zh/chapter2/de_identified_data_processing.py">数据脱敏处理完整代码</a></li>
+<li><a href="https://github.com/datawhalechina/diy-llm/blob/main/docs/zh/chapter2/BPE_character_byte_level_word_segmentation_Comparison.py">BPE、字符级、字节级的分词器效果对比</a></li>
+</ul></div>
+<div style="font-size:small;margin-top:8px;float:right;">❤️ 转载文章请注明出处，谢谢！❤️</div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://zhfou.github.io">知否</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://hefung.github.io" target="_blank">Mr.HeFung</a> </span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if("2026/10/29"!=""){
+    var startSite=new Date("2026/10/29");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行 "+diffDay+" 天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek  https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.disabled=true;
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","zhfou/zhfou.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+<script>MathJax = {tex: {inlineMath: [["$", "$"]]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+</html>
