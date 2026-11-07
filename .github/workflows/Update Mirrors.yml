@@ -84,7 +84,7 @@ jobs:
               return '| ' + (index + 1) + ' | ' + item.label + ' | ' + latency + ' | ' + speed + ' | ' + status + ' | ' + actionCell + ' |';
             }).join('\n');
 
-            const newIssueBody = '### GitHub 镜像源测速表\n> 每12小时自动测速更新，最后更新时间：' + updateTime + '\n\n| ID | 镜像 | 延迟 | 速度 | 状态 | 操作 |\n| :---: | --- | :---: | :---: | :---: | :---: |\n' + tableRows + '\n';
+            const newIssueBody = '### GitHub 镜像源测速表\n> 每12小时自动测速更新，最后更新时间：' + updateTime +'${totalCount} 个镜像 ● <span style="color:#2da44e;">🟢 ${okCount} 正常</span> ● <span style="color:#cf222e;">🔴 ${errorCount} 超时</span> ● <span style="color:#828282;">⚫ ${notSupportCount} 不支持</span> '+'\n\n| ID | 镜像 | 延迟 | 速度 | 状态 | 操作 |\n| :---: | --- | :---: | :---: | :---: | :---: |\n' + tableRows + '\n';
 
             // 获取原有Issue内容对比
             const { data: issue } = await github.rest.issues.get({
