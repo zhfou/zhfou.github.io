@@ -65,7 +65,7 @@ jobs:
               return `| ${index + 1} | ${item.label} | ${latency} | ${speed} | ${status} |`;
             }).join('\n');
 
-            // 6. 拼接完整 Markdown（顶格写，避免多余缩进）
+            // 6. 拼接完整 Markdown
             const markdown = `### GitHub 镜像源测速表
 > 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：${updateTime}
 
@@ -87,7 +87,6 @@ ${tableRows}
             } catch (e) {
               changed = true;
             }
-            // 正确设置输出变量
             core.setOutput('changed', String(changed));
 
       - name: 提交并推送到仓库
@@ -106,10 +105,7 @@ ${tableRows}
           script: |
             const fs = require('fs');
             const content = fs.readFileSync('mirrors.md', 'utf8');
-
-            // 修改为你的 Issue 编号
             const ISSUE_NUMBER = 14;
-
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
