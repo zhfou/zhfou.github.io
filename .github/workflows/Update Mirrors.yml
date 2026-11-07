@@ -68,29 +68,31 @@ jobs:
               const speed = item.speed != null ? `${item.speed.toFixed(2)} MB/s` : '—';
               const status = statusMap[item.status] || item.status;
               return `| ${index + 1} | ${item.label} | ${latency} | ${speed} | ${status} |`;
-            }).join('\n');
+            });
 
             const totalCount = rawData.mirrors.length;
             const okCount = rawData.mirrors.filter(x=>x.status==='ok').length;
             const errorCount = rawData.mirrors.filter(x=>x.status==='error').length;
             const notSupportCount = rawData.mirrors.filter(x=>x.status==='404').length;
 
-            const newIssueBody = `### 最新可用地址
-镜像源每 12 小时测速，自动最优不行就手动换正常节点。
-本页面自动轮询检测各大 GitHub 加速代理，实时展示连通状态、延迟与测速结果。测速存在网络波动，仅供参考，请优先选择状态为正常的镜像使用。
-
-${totalCount} 个镜像 ● <span style="color:#2da44e;">🟢 ${okCount} 正常</span> ● <span style="color:#cf222e;">🔴 ${errorCount} 超时</span> ● <span style="color:#828282;">⚫ ${notSupportCount} 不支持</span>
-
-#### 使用说明
-- 点击【复制】拿到镜像前缀，在原 GitHub 链接前面拼接该地址即可加速下载
-- 仅正常状态镜像可复制；超时、不支持状态无法使用，按钮已锁定
-- 不支持：该代理格式不兼容，无法用于 GitHub 加速；超时：当前网络无法连通
-- 所有镜像均为第三方公共服务，不保证长期稳定，建议多备用几个镜像
-
-| ID | 镜像 | 延迟 | 速度 | 状态 |
-|:---:|:---:|:---:|:---:|:---:|
-${tableRows}
-`;
+            const mdArr = [
+              '### 最新可用地址',
+              '镜像源每 12 小时测速，自动最优不行就手动换正常节点。',
+              '本页面自动轮询检测各大 GitHub 加速代理，实时展示连通状态、延迟与测速结果。测速存在网络波动，仅供参考，请优先选择状态为正常的镜像使用。',
+              '',
+              `${totalCount} 个镜像 ● <span style="color:#2da44e;">🟢 ${okCount} 正常</span> ● <span style="color:#cf222e;">🔴 ${errorCount} 超时</span> ● <span style="color:#828282;">⚫ ${notSupportCount} 不支持</span>`,
+              '',
+              '#### 使用说明',
+              '- 点击【复制】拿到镜像前缀，在原 GitHub 链接前面拼接该地址即可加速下载',
+              '- 仅正常状态镜像可复制；超时、不支持状态无法使用，按钮已锁定',
+              '- 不支持：该代理格式不兼容，无法用于 GitHub 加速；超时：当前网络无法连通',
+              '- 所有镜像均为第三方公共服务，不保证长期稳定，建议多备用几个镜像',
+              '',
+              '| ID | 镜像 | 延迟 | 速度 | 状态 |',
+              '|:---:|:---:|:---:|:---:|:---:|',
+              ...tableRows
+            ];
+            const newIssueBody = mdArr.join('\n');
 
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner,
@@ -109,15 +111,3 @@ ${tableRows}
             } else {
               console.log('ℹ️ Issue内容无变化，跳过更新Issue');
             }
-
-      - name: 提交推送 mirror-github.json（仅变更时提交）
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add mirror-github.json
-          if git diff --cached --quiet; then
-            echo "ℹ️ json数据无变化，跳过git提交"
-            exit 0
-          fi
-          git commit -m "auto update mirror-github.json"
-          git push origin main
