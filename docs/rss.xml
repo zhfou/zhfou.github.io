@@ -1,5 +1,76 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>知否</title><link>https://zhfou.github.io</link><description>大千世界，何其茫茫。谨此笔记，记录过往。凭君阅览，小站洛荒。如能收益，莫大奢望。</description><copyright>知否</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://www.blogger.com/img/logo_blogger_40px_2x.png</url><title>avatar</title><link>https://zhfou.github.io</link></image><lastBuildDate>Fri, 30 Oct 2026 20:31:14 +0000</lastBuildDate><managingEditor>知否</managingEditor><ttl>60</ttl><webMaster>知否</webMaster><item><title>实践说明</title><link>https://zhfou.github.io/post/shi-jian-shuo-ming.html</link><description>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>知否</title><link>https://zhfou.github.io</link><description>大千世界，何其茫茫。谨此笔记，记录过往。凭君阅览，小站洛荒。如能收益，莫大奢望。</description><copyright>知否</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://www.blogger.com/img/logo_blogger_40px_2x.png</url><title>avatar</title><link>https://zhfou.github.io</link></image><lastBuildDate>Sat, 07 Nov 2026 13:48:06 +0000</lastBuildDate><managingEditor>知否</managingEditor><ttl>60</ttl><webMaster>知否</webMaster><item><title>GitHub 最新加速镜像地址，镜像源每 12 小时测速。</title><link>https://zhfou.github.io/post/GitHub%20-zui-xin-jia-su-jing-xiang-di-zhi-%EF%BC%8C-jing-xiang-yuan-mei-%2012%20-xiao-shi-ce-su-%E3%80%82.html</link><description>### GitHub 镜像源测速表
+&gt; 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：2026/11/07 10:02:53
+
+| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |
+| :---: | --- | :---: | :---: | :---: |
+| 1 | gh-proxy.com | 296 | 14.56 | 正常 |
+| 2 | fastgit.cc | 453 | 9.09 | 正常 |
+| 3 | gh.monlor.com | 505 | 8.69 | 正常 |
+| 4 | down.mxw.xx.kg | 399 | 7.83 | 正常 |
+| 5 | gg.z321.cc.cd | 940 | 7.10 | 正常 |
+| 6 | xsadwsd.kdns.fr | 557 | 7.07 | 正常 |
+| 7 | cdn.gh-proxy.com | 697 | 6.83 | 正常 |
+| 8 | gh.my-website.ccwu.cc | 564 | 5.71 | 正常 |
+| 9 | down.mxw.qzz.io | 887 | 5.65 | 正常 |
+| 10 | ghproxy.felicity.land | 847 | 5.54 | 正常 |
+| 11 | tvv.tw | 563 | 5.50 | 正常 |
+| 12 | 777.z321.cc.cd | 585 | 4.47 | 正常 |
+| 13 | ghfast.top | 691 | 4.32 | 正常 |
+| 14 | gh.acmsz.top | 1019 | 4.24 | 正常 |
+| 15 | gh.idayer.com | 830 | 4.13 | 正常 |
+| 16 | cdn.akaere.online | 402 | 4.10 | 正常 |
+| 17 | github.mxw.qzz.io | 528 | 3.87 | 正常 |
+| 18 | g.z321.cc.cd | 839 | 3.86 | 正常 |
+| 19 | gh.noki.icu | 386 | 3.73 | 正常 |
+| 20 | git.yylx.win | 797 | 3.50 | 正常 |
+| 21 | ghproxy.imciel.com | 454 | 3.14 | 正常 |
+| 22 | gh.sixyin.com | 1042 | 2.40 | 正常 |
+| 23 | github.ednovas.xyz | 929 | 2.15 | 正常 |
+| 24 | gh.07150721.xyz | 1249 | 1.91 | 正常 |
+| 25 | github.tbap.top | 853 | 1.82 | 正常 |
+| 26 | free.cn.eu.org | 1130 | 1.72 | 正常 |
+| 27 | gh.dpik.top | 3640 | 1.25 | 正常 |
+| 28 | ghfile.geekertao.top | 3661 | 1.14 | 正常 |
+| 29 | github.chenc.dev | 1534 | 1.01 | 正常 |
+| 30 | git.669966.xyz | 1465 | 1.01 | 正常 |
+| 31 | ghproxy.net | 786 | 0.56 | 正常 |
+| 32 | github.xxlab.tech | 826 | 0.12 | 正常 |
+| 33 | g.blfrp.cn | 1372 | 0.04 | 正常 |
+| 34 | gh.bugdey.us.kg | — | — | 超时 |
+| 35 | jiashu.1win.eu.org | — | — | 超时 |
+| 36 | github-proxy.memory-echoes.cn | — | — | 超时 |
+| 37 | github.dpik.top | — | — | 超时 |
+| 38 | gh.felicity.ac.cn | — | — | 超时 |
+| 39 | gh.inkchills.cn | — | — | 超时 |
+| 40 | gitproxy.mrhjx.cn | — | — | 超时 |
+| 41 | gh.927223.xyz | — | — | 超时 |
+| 42 | ghf.xn--eqrr82bzpe.top | — | — | 超时 |
+| 43 | gh.catmak.name | — | — | 超时 |
+| 44 | gitproxy.127731.xyz | — | — | 超时 |
+| 45 | ghm.078465.xyz | — | — | 超时 |
+| 46 | gh.b52m.cn | — | — | 超时 |
+| 47 | gh.ddlc.top | 1359 | — | 超时 |
+| 48 | ghpxy.hwinzniej.top | — | — | 超时 |
+| 49 | gh.jasonzeng.dev | — | — | 超时 |
+| 50 | github.geekery.cn | — | — | 超时 |
+| 51 | gp.zkitefly.eu.org | — | — | 超时 |
+| 52 | ghproxy.1888866.xyz | — | — | 超时 |
+| 53 | ghp.arslantu.xyz | — | — | 超时 |
+| 54 | ghproxy.cxkpro.top | — | — | 超时 |
+| 55 | gh.chjina.com | — | — | 超时 |
+| 56 | ghp.keleyaa.com | — | — | 超时 |
+| 57 | githubdog.com | — | — | 超时 |
+| 58 | gh.meali.top | — | — | 超时 |
+| 59 | js.jiangss.shop | — | — | 超时 |
+| 60 | github.ikgy.top | — | — | 超时 |
+| 61 | cfgh.ikgy.top | — | — | 超时 |
+| 62 | ghproxy.monkeyray.net | — | — | 不支持 |
+| 63 | gh.qfmc0721.cc.cd | — | — | 超时 |
+| 64 | github.nswrz.cn | — | — | 超时 |
+| 65 | proxy.yaoyaoling.net | — | — | 超时 |
+| 66 | gh.ruan.dpdns.org | — | — | 超时 |
+。</description><guid isPermaLink="true">https://zhfou.github.io/post/GitHub%20-zui-xin-jia-su-jing-xiang-di-zhi-%EF%BC%8C-jing-xiang-yuan-mei-%2012%20-xiao-shi-ce-su-%E3%80%82.html</guid><pubDate>Sat, 07 Nov 2026 11:40:06 +0000</pubDate></item><item><title>实践说明</title><link>https://zhfou.github.io/post/shi-jian-shuo-ming.html</link><description>
 
 聚焦如何基于 Transformers 生态完成大模型训练实践，正文主线为 Pretrain、SFT 与 PEFT 三部分，适合作为从手写模型实现过渡到工业界训练框架的桥梁章节。</description><guid isPermaLink="true">https://zhfou.github.io/post/shi-jian-shuo-ming.html</guid><pubDate>Fri, 30 Oct 2026 03:31:32 +0000</pubDate></item><item><title>大语言模型</title><link>https://zhfou.github.io/post/da-yu-yan-mo-xing.html</link><description>## 4.1 什么是 LLM
 
