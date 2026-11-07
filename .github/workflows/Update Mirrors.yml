@@ -25,12 +25,10 @@ jobs:
             const OUTPUT_FILE = './mirror-github.json';
             const ISSUE_NUMBER = 14;
 
-            // 1. 拉取源数据
             const res = await fetch(API_URL);
             if (!res.ok) throw new Error('接口请求失败: ' + res.status);
             const rawData = await res.json();
 
-            // 2. 格式化北京时间
             const updateTime = new Date(rawData.updatedAt).toLocaleString('zh-CN', {
               timeZone: 'Asia/Shanghai',
               year: 'numeric',
@@ -41,21 +39,18 @@ jobs:
               second: '2-digit'
             });
 
-            // 3. 状态映射
             const statusMap = {
               ok: '正常',
               error: '超时',
               '404': '不支持'
             };
 
-            // 4. 排序：正常在前（速度降序），异常在后
             const okList = rawData.mirrors
               .filter(item => item.status === 'ok')
               .sort((a, b) => b.speed - a.speed);
             const errorList = rawData.mirrors.filter(item => item.status !== 'ok');
             const fullList = [...okList, ...errorList];
 
-            // ========== 任务A：组装并写入 mirror-github.json ==========
             const jsonOutput = {
               updatedAt: rawData.updatedAt,
               updateTimeCN: updateTime,
@@ -68,25 +63,34 @@ jobs:
               }))
             };
             fs.writeFileSync(OUTPUT_FILE, JSON.stringify(jsonOutput, null, 2), 'utf8');
-            console.log('✅ mirror-github.json 已生成');
 
-            // ========== 任务B：生成Markdown，更新 Issue #14 ==========
             const tableRows = fullList.map((item, index) => {
               const latency = item.latency != null ? `${item.latency} ms` : '—';
               const speed = item.speed != null ? `${item.speed.toFixed(2)} MB/s` : '—';
               const status = statusMap[item.status] || item.status;
-              let actionCell = '';
-              if(item.status === 'ok'){
-                actionCell = `<kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd>`;
-              }else{
-                actionCell = `<span style="color:#999;">—</span>`;
-              }
-              return '| ' + (index + 1) + ' | ' + item.label + ' | ' + latency + ' | ' + speed + ' | ' + status + ' | ' + actionCell + ' |';
+              return `| ${index + 1} | ${item.label} | ${latency} | ${speed} | ${status} |`;
             }).join('\n');
 
-            const newIssueBody = '### GitHub 镜像源测速表\n> 每12小时自动测速更新，最后更新时间：' + updateTime +'共计' + totalCount + '个镜像 ● <span style="color:#2da44e;">🟢 ' + okCount + '正常</span> ● <span style="color:#cf222e;">🔴 ' +  errorCount + '超时</span> ● <span style="color:#828282;">⚫ ' + notSupportCount + '不支持</span> '+'\n\n| ID | 镜像 | 延迟 | 速度 | 状态 | 操作 |\n| :---: | --- | :---: | :---: | :---: | :---: |\n' + tableRows + '\n';
+            const totalCount = rawData.mirrors.length;
+            const okCount = rawData.mirrors.filter(x=>x.status==='ok').length;
+            const errorCount = rawData.mirrors.filter(x=>x.status==='error').length;
+            const notSupportCount = rawData.mirrors.filter(x=>x.status==='404').length;
 
-            // 获取原有Issue内容对比
+            // 重点：全部用 \n \n 控制换行，消除编辑器红色波浪
+            const newIssueBody =
+`### 最新可用地址\n` +
+`镜像源每 12 小时测速，自动最优不行就手动换正常节点。\n` +
+`本页面自动轮询检测各大 GitHub 加速代理，实时展示连通状态、延迟与测速结果。测速存在网络波动，仅供参考，请优先选择状态为正常的镜像使用。\n\n` +
+`${totalCount} 个镜像 ● <span style="color:#2da44e;">🟢 ${okCount} 正常</span> ● <span style="color:#cf222e;">🔴 ${errorCount} 超时</span> ● <span style="color:#828282;">⚫ ${notSupportCount} 不支持</span>\n\n` +
+`#### 使用说明\n` +
+`- 点击【复制】拿到镜像前缀，在原 GitHub 链接前面拼接该地址即可加速下载\n` +
+`- 仅正常状态镜像可复制；超时、不支持状态无法使用，按钮已锁定\n` +
+`- 不支持：该代理格式不兼容，无法用于 GitHub 加速；超时：当前网络无法连通\n` +
+`- 所有镜像均为第三方公共服务，不保证长期稳定，建议多备用几个镜像\n\n` +
+`| ID | 镜像 | 延迟 | 速度 | 状态 |\n` +
+`|:---:|:---:|:---:|:---:|:---:|\n` +
+`${tableRows}`;
+
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
