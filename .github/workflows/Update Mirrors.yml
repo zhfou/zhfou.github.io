@@ -1,5 +1,4 @@
-name: 自动更新镜像表到Issue
-
+name: 自动生成 mirror-github.json
 on:
   schedule:
     # UTC 2:00 / 14:00 = 北京时间 10:00 / 22:00
@@ -7,27 +6,30 @@ on:
   workflow_dispatch:
 
 permissions:
-  issues: write
+  contents: write
 
 jobs:
-  update-issue-mirrors:
+  generate-json:
     runs-on: ubuntu-latest
     steps:
-      - name: 拉取数据并更新Issue正文
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+
+      - name: 拉取测速接口，生成 mirror-github.json
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
             const API_URL = 'https://hiwiki.org/data/mirror-speeds.json';
-            // 修改为你的目标 Issue 编号
-            const ISSUE_NUMBER = 14;
+            const OUTPUT_FILE = './mirror-github.json';
 
-            // 1. 拉取接口数据
+            // 拉取源数据
             const res = await fetch(API_URL);
             if (!res.ok) throw new Error('接口请求失败: ' + res.status);
-            const data = await res.json();
+            const rawData = await res.json();
 
-            // 2. 格式化北京时间
-            const updateTime = new Date(data.updatedAt).toLocaleString('zh-CN', {
+            // 北京时间格式化
+            const updateTime = new Date(rawData.updatedAt).toLocaleString('zh-CN', {
               timeZone: 'Asia/Shanghai',
               year: 'numeric',
               month: '2-digit',
@@ -37,48 +39,48 @@ jobs:
               second: '2-digit'
             });
 
-            // 3. 状态映射
+            // 状态映射
             const statusMap = {
               ok: '正常',
               error: '超时',
               '404': '不支持'
             };
 
-            // 4. 数据排序：正常在前（速度降序），异常在后
-            const okList = data.mirrors
+            // 排序：正常在前、速度降序，异常放后面
+            const okList = rawData.mirrors
               .filter(item => item.status === 'ok')
               .sort((a, b) => b.speed - a.speed);
-            const errorList = data.mirrors.filter(item => item.status !== 'ok');
+            const errorList = rawData.mirrors.filter(item => item.status !== 'ok');
             const fullList = [...okList, ...errorList];
 
-            // 5. 生成表格行
-            const tableRows = fullList.map((item, index) => {
-              const latency = item.latency != null ? item.latency : '—';
-              const speed = item.speed != null ? item.speed.toFixed(2) : '—';
-              const status = statusMap[item.status] || item.status;
-              return '| ' + (index + 1) + ' | ' + item.label + ' | ' + latency + ' | ' + speed + ' | ' + status + ' |';
-            }).join('\n');
+            // 组装输出JSON结构，前端组件直接读这个
+            const output = {
+              updatedAt: rawData.updatedAt,
+              updateTimeCN: updateTime,
+              mirrors: fullList.map(item => {
+                return {
+                  label: item.label,
+                  latency: item.latency ?? null,
+                  speed: item.speed ?? null,
+                  status: item.status,
+                  statusText: statusMap[item.status] || item.status
+                };
+              })
+            };
 
-            // 6. 拼接完整 Markdown 内容
-            const newContent = '### GitHub 镜像源测速表\n> 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：' + updateTime + '\n\n| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |\n| :---: | --- | :---: | :---: | :---: |\n' + tableRows + '\n';
+            // 写入文件
+            fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2), 'utf8');
+            console.log('文件已生成：', OUTPUT_FILE);
 
-            // 7. 获取当前Issue正文，对比是否有变化
-            const { data: issue } = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ISSUE_NUMBER
-            });
-
-            if (issue.body.trim() === newContent.trim()) {
-              console.log('数据无变化，跳过Issue更新');
-              return;
-            }
-
-            // 8. 更新Issue正文
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ISSUE_NUMBER,
-              body: newContent
-            });
-            console.log('Issue #' + ISSUE_NUMBER + ' 正文已更新完成');
+      - name: 提交并推送（仅内容变化时）
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add mirror-github.json
+          # 没有变更直接退出
+          if git diff --cached --quiet; then
+            echo "数据无变化，跳过提交"
+            exit 0
+          fi
+          git commit -m "auto update mirror-github.json"
+          git push origin main
