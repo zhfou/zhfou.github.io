@@ -1,0 +1,468 @@
+{
+  "updatedAt": "2026-11-07T02:02:53.111124Z",
+  "updateTimeCN": "2026/11/07 10:02:53",
+  "mirrors": [
+    {
+      "label": "gh-proxy.com",
+      "latency": 296,
+      "speed": 14.56,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "fastgit.cc",
+      "latency": 453,
+      "speed": 9.09,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.monlor.com",
+      "latency": 505,
+      "speed": 8.69,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "down.mxw.xx.kg",
+      "latency": 399,
+      "speed": 7.83,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gg.z321.cc.cd",
+      "latency": 940,
+      "speed": 7.1,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "xsadwsd.kdns.fr",
+      "latency": 557,
+      "speed": 7.07,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "cdn.gh-proxy.com",
+      "latency": 697,
+      "speed": 6.83,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.my-website.ccwu.cc",
+      "latency": 564,
+      "speed": 5.71,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "down.mxw.qzz.io",
+      "latency": 887,
+      "speed": 5.65,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "ghproxy.felicity.land",
+      "latency": 847,
+      "speed": 5.54,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "tvv.tw",
+      "latency": 563,
+      "speed": 5.5,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "777.z321.cc.cd",
+      "latency": 585,
+      "speed": 4.47,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "ghfast.top",
+      "latency": 691,
+      "speed": 4.32,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.acmsz.top",
+      "latency": 1019,
+      "speed": 4.24,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.idayer.com",
+      "latency": 830,
+      "speed": 4.13,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "cdn.akaere.online",
+      "latency": 402,
+      "speed": 4.1,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "github.mxw.qzz.io",
+      "latency": 528,
+      "speed": 3.87,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "g.z321.cc.cd",
+      "latency": 839,
+      "speed": 3.86,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.noki.icu",
+      "latency": 386,
+      "speed": 3.73,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "git.yylx.win",
+      "latency": 797,
+      "speed": 3.5,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "ghproxy.imciel.com",
+      "latency": 454,
+      "speed": 3.14,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.sixyin.com",
+      "latency": 1042,
+      "speed": 2.4,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "github.ednovas.xyz",
+      "latency": 929,
+      "speed": 2.15,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.07150721.xyz",
+      "latency": 1249,
+      "speed": 1.91,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "github.tbap.top",
+      "latency": 853,
+      "speed": 1.82,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "free.cn.eu.org",
+      "latency": 1130,
+      "speed": 1.72,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.dpik.top",
+      "latency": 3640,
+      "speed": 1.25,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "ghfile.geekertao.top",
+      "latency": 3661,
+      "speed": 1.14,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "github.chenc.dev",
+      "latency": 1534,
+      "speed": 1.01,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "git.669966.xyz",
+      "latency": 1465,
+      "speed": 1.01,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "ghproxy.net",
+      "latency": 786,
+      "speed": 0.56,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "github.xxlab.tech",
+      "latency": 826,
+      "speed": 0.12,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "g.blfrp.cn",
+      "latency": 1372,
+      "speed": 0.04,
+      "status": "ok",
+      "statusText": "正常"
+    },
+    {
+      "label": "gh.bugdey.us.kg",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "jiashu.1win.eu.org",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "github-proxy.memory-echoes.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "github.dpik.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.felicity.ac.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.inkchills.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gitproxy.mrhjx.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.927223.xyz",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghf.xn--eqrr82bzpe.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.catmak.name",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gitproxy.127731.xyz",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghm.078465.xyz",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.b52m.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.ddlc.top",
+      "latency": 1359,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghpxy.hwinzniej.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.jasonzeng.dev",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "github.geekery.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gp.zkitefly.eu.org",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghproxy.1888866.xyz",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghp.arslantu.xyz",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghproxy.cxkpro.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.chjina.com",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghp.keleyaa.com",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "githubdog.com",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.meali.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "js.jiangss.shop",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "github.ikgy.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "cfgh.ikgy.top",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "ghproxy.monkeyray.net",
+      "latency": null,
+      "speed": null,
+      "status": "404",
+      "statusText": "不支持"
+    },
+    {
+      "label": "gh.qfmc0721.cc.cd",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "github.nswrz.cn",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "proxy.yaoyaoling.net",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    },
+    {
+      "label": "gh.ruan.dpdns.org",
+      "latency": null,
+      "speed": null,
+      "status": "error",
+      "statusText": "超时"
+    }
+  ]
+}
