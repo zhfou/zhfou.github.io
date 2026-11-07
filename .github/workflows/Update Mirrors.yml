@@ -23,7 +23,6 @@ jobs:
           script: |
             const fs = require('fs');
             const { execSync } = require('child_process');
-            const core = require('@actions/core');
             const API_URL = 'https://hiwiki.org/data/mirror-speeds.json';
 
             const res = await fetch(API_URL);
