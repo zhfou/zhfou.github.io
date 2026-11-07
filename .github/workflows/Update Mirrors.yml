@@ -2,7 +2,6 @@ name: 自动更新GitHub镜像测速表
 
 on:
   schedule:
-    # UTC 2:00 / 14:00 = 北京时间 10:00 / 22:00
     - cron: '0 2,14 * * *'
   workflow_dispatch:
 
@@ -27,12 +26,10 @@ jobs:
             const core = require('@actions/core');
             const API_URL = 'https://hiwiki.org/data/mirror-speeds.json';
 
-            // 1. 请求接口数据
             const res = await fetch(API_URL);
-            if (!res.ok) throw new Error(`接口请求失败: ${res.status}`);
+            if (!res.ok) throw new Error('接口请求失败: ' + res.status);
             const data = await res.json();
 
-            // 2. 格式化北京时间
             const updateTime = new Date(data.updatedAt).toLocaleString('zh-CN', {
               timeZone: 'Asia/Shanghai',
               year: 'numeric',
@@ -43,47 +40,35 @@ jobs:
               second: '2-digit'
             });
 
-            // 3. 状态映射
             const statusMap = {
               ok: '正常',
               error: '超时',
               '404': '不支持'
             };
 
-            // 4. 数据排序：正常在前（速度降序），异常在后
             const okList = data.mirrors
               .filter(item => item.status === 'ok')
               .sort((a, b) => b.speed - a.speed);
             const errorList = data.mirrors.filter(item => item.status !== 'ok');
             const fullList = [...okList, ...errorList];
 
-            // 5. 生成表格行
             const tableRows = fullList.map((item, index) => {
               const latency = item.latency != null ? item.latency : '—';
               const speed = item.speed != null ? item.speed.toFixed(2) : '—';
               const status = statusMap[item.status] || item.status;
-              return `| ${index + 1} | ${item.label} | ${latency} | ${speed} | ${status} |`;
+              return '| ' + (index + 1) + ' | ' + item.label + ' | ' + latency + ' | ' + speed + ' | ' + status + ' |';
             }).join('\n');
 
-            // 6. 拼接完整 Markdown
-            const markdown = `### GitHub 镜像源测速表
-> 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：${updateTime}
+            const markdown = '### GitHub 镜像源测速表\n> 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：' + updateTime + '\n\n| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |\n| :---: | --- | :---: | :---: | :---: |\n' + tableRows + '\n';
 
-| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |
-| :---: | --- | :---: | :---: | :---: |
-${tableRows}
-`;
-
-            // 7. 写入文件
             fs.writeFileSync('mirrors.md', markdown);
-            console.log('✅ 镜像表已生成到 mirrors.md');
+            console.log('镜像表已生成到 mirrors.md');
 
-            // 8. 判断文件是否有变更
             let changed = true;
             try {
               execSync('git diff --quiet mirrors.md');
               changed = false;
-              console.log('ℹ️  数据无变化，跳过后续提交');
+              console.log('数据无变化，跳过后续提交');
             } catch (e) {
               changed = true;
             }
@@ -112,4 +97,4 @@ ${tableRows}
               issue_number: ISSUE_NUMBER,
               body: content
             });
-            console.log(`✅ Issue #${ISSUE_NUMBER} 正文已同步更新`);
+            console.log('Issue #' + ISSUE_NUMBER + ' 正文已同步更新');
