@@ -1,71 +1,71 @@
 ### GitHub 镜像源测速表
-> 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：2026/11/07 10:02:53
+> 每12小时自动测速更新，最后更新时间：2026/11/08 00:41:33
 
-| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |
-| :---: | --- | :---: | :---: | :---: |
-| 1 | gh-proxy.com | 296 | 14.56 | 正常 |
-| 2 | fastgit.cc | 453 | 9.09 | 正常 |
-| 3 | gh.monlor.com | 505 | 8.69 | 正常 |
-| 4 | down.mxw.xx.kg | 399 | 7.83 | 正常 |
-| 5 | gg.z321.cc.cd | 940 | 7.10 | 正常 |
-| 6 | xsadwsd.kdns.fr | 557 | 7.07 | 正常 |
-| 7 | cdn.gh-proxy.com | 697 | 6.83 | 正常 |
-| 8 | gh.my-website.ccwu.cc | 564 | 5.71 | 正常 |
-| 9 | down.mxw.qzz.io | 887 | 5.65 | 正常 |
-| 10 | ghproxy.felicity.land | 847 | 5.54 | 正常 |
-| 11 | tvv.tw | 563 | 5.50 | 正常 |
-| 12 | 777.z321.cc.cd | 585 | 4.47 | 正常 |
-| 13 | ghfast.top | 691 | 4.32 | 正常 |
-| 14 | gh.acmsz.top | 1019 | 4.24 | 正常 |
-| 15 | gh.idayer.com | 830 | 4.13 | 正常 |
-| 16 | cdn.akaere.online | 402 | 4.10 | 正常 |
-| 17 | github.mxw.qzz.io | 528 | 3.87 | 正常 |
-| 18 | g.z321.cc.cd | 839 | 3.86 | 正常 |
-| 19 | gh.noki.icu | 386 | 3.73 | 正常 |
-| 20 | git.yylx.win | 797 | 3.50 | 正常 |
-| 21 | ghproxy.imciel.com | 454 | 3.14 | 正常 |
-| 22 | gh.sixyin.com | 1042 | 2.40 | 正常 |
-| 23 | github.ednovas.xyz | 929 | 2.15 | 正常 |
-| 24 | gh.07150721.xyz | 1249 | 1.91 | 正常 |
-| 25 | github.tbap.top | 853 | 1.82 | 正常 |
-| 26 | free.cn.eu.org | 1130 | 1.72 | 正常 |
-| 27 | gh.dpik.top | 3640 | 1.25 | 正常 |
-| 28 | ghfile.geekertao.top | 3661 | 1.14 | 正常 |
-| 29 | github.chenc.dev | 1534 | 1.01 | 正常 |
-| 30 | git.669966.xyz | 1465 | 1.01 | 正常 |
-| 31 | ghproxy.net | 786 | 0.56 | 正常 |
-| 32 | github.xxlab.tech | 826 | 0.12 | 正常 |
-| 33 | g.blfrp.cn | 1372 | 0.04 | 正常 |
-| 34 | gh.bugdey.us.kg | — | — | 超时 |
-| 35 | jiashu.1win.eu.org | — | — | 超时 |
-| 36 | github-proxy.memory-echoes.cn | — | — | 超时 |
-| 37 | github.dpik.top | — | — | 超时 |
-| 38 | gh.felicity.ac.cn | — | — | 超时 |
-| 39 | gh.inkchills.cn | — | — | 超时 |
-| 40 | gitproxy.mrhjx.cn | — | — | 超时 |
-| 41 | gh.927223.xyz | — | — | 超时 |
-| 42 | ghf.xn--eqrr82bzpe.top | — | — | 超时 |
-| 43 | gh.catmak.name | — | — | 超时 |
-| 44 | gitproxy.127731.xyz | — | — | 超时 |
-| 45 | ghm.078465.xyz | — | — | 超时 |
-| 46 | gh.b52m.cn | — | — | 超时 |
-| 47 | gh.ddlc.top | 1359 | — | 超时 |
-| 48 | ghpxy.hwinzniej.top | — | — | 超时 |
-| 49 | gh.jasonzeng.dev | — | — | 超时 |
-| 50 | github.geekery.cn | — | — | 超时 |
-| 51 | gp.zkitefly.eu.org | — | — | 超时 |
-| 52 | ghproxy.1888866.xyz | — | — | 超时 |
-| 53 | ghp.arslantu.xyz | — | — | 超时 |
-| 54 | ghproxy.cxkpro.top | — | — | 超时 |
-| 55 | gh.chjina.com | — | — | 超时 |
-| 56 | ghp.keleyaa.com | — | — | 超时 |
-| 57 | githubdog.com | — | — | 超时 |
-| 58 | gh.meali.top | — | — | 超时 |
-| 59 | js.jiangss.shop | — | — | 超时 |
-| 60 | github.ikgy.top | — | — | 超时 |
-| 61 | cfgh.ikgy.top | — | — | 超时 |
-| 62 | ghproxy.monkeyray.net | — | — | 不支持 |
-| 63 | gh.qfmc0721.cc.cd | — | — | 超时 |
-| 64 | github.nswrz.cn | — | — | 超时 |
-| 65 | proxy.yaoyaoling.net | — | — | 超时 |
-| 66 | gh.ruan.dpdns.org | — | — | 超时 |
+| ID | 镜像 | 延迟 | 速度 | 状态 | 操作 |
+| :---: | --- | :---: | :---: | :---: | :---: |
+| 1 | gh.monlor.com | 155 ms | 26.98 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 2 | fastgit.cc | 156 ms | 19.83 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 3 | gh-proxy.com | 116 ms | 18.90 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 4 | gh.acmsz.top | 571 ms | 18.02 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 5 | ghproxy.imciel.com | 151 ms | 17.75 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 6 | xsadwsd.kdns.fr | 249 ms | 17.21 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 7 | down.mxw.qzz.io | 992 ms | 16.97 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 8 | down.mxw.xx.kg | 347 ms | 16.71 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 9 | ghproxy.felicity.land | 514 ms | 14.92 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 10 | github.tbap.top | 717 ms | 11.82 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 11 | cdn.akaere.online | 208 ms | 10.72 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 12 | gh.07150721.xyz | 385 ms | 10.67 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 13 | tvv.tw | 253 ms | 10.20 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 14 | gh.my-website.ccwu.cc | 431 ms | 9.02 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 15 | cdn.gh-proxy.com | 636 ms | 6.70 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 16 | gh.noki.icu | 393 ms | 4.92 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 17 | gh.sixyin.com | 874 ms | 3.83 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 18 | ghfast.top | 690 ms | 2.58 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 19 | free.cn.eu.org | 1157 ms | 1.83 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 20 | github.ednovas.xyz | 749 ms | 1.73 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 21 | github.chenc.dev | 1698 ms | 0.92 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 22 | gh.dpik.top | 646 ms | 0.66 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 23 | git.669966.xyz | 1898 ms | 0.64 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 24 | git.yylx.win | 944 ms | 0.62 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 25 | ghproxy.monkeyray.net | 4301 ms | 0.53 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 26 | ghproxy.net | 2028 ms | 0.38 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 27 | github.xxlab.tech | 1211 ms | 0.12 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 28 | g.blfrp.cn | 7071 ms | 0.02 MB/s | 正常 | <kbd style="background:#4096ff;color:white;padding:2px 6px;border-radius:4px;">复制</kbd> |
+| 29 | gh.bugdey.us.kg | — | — | 超时 | <span style="color:#999;">—</span> |
+| 30 | ghfile.geekertao.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 31 | github-proxy.memory-echoes.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 32 | jiashu.1win.eu.org | — | — | 超时 | <span style="color:#999;">—</span> |
+| 33 | github.mxw.qzz.io | — | — | 超时 | <span style="color:#999;">—</span> |
+| 34 | github.dpik.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 35 | gh.927223.xyz | — | — | 超时 | <span style="color:#999;">—</span> |
+| 36 | gh.inkchills.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 37 | gitproxy.mrhjx.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 38 | gh.felicity.ac.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 39 | gh.ddlc.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 40 | gitproxy.127731.xyz | — | — | 超时 | <span style="color:#999;">—</span> |
+| 41 | gh.catmak.name | — | — | 超时 | <span style="color:#999;">—</span> |
+| 42 | ghf.xn--eqrr82bzpe.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 43 | gh.b52m.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 44 | ghm.078465.xyz | — | — | 超时 | <span style="color:#999;">—</span> |
+| 45 | ghpxy.hwinzniej.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 46 | gh.jasonzeng.dev | — | — | 超时 | <span style="color:#999;">—</span> |
+| 47 | gp.zkitefly.eu.org | — | — | 超时 | <span style="color:#999;">—</span> |
+| 48 | github.geekery.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 49 | ghproxy.1888866.xyz | — | — | 超时 | <span style="color:#999;">—</span> |
+| 50 | ghproxy.cxkpro.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 51 | ghp.arslantu.xyz | — | — | 超时 | <span style="color:#999;">—</span> |
+| 52 | gh.idayer.com | — | — | 超时 | <span style="color:#999;">—</span> |
+| 53 | gh.chjina.com | — | — | 超时 | <span style="color:#999;">—</span> |
+| 54 | ghp.keleyaa.com | — | — | 超时 | <span style="color:#999;">—</span> |
+| 55 | githubdog.com | — | — | 超时 | <span style="color:#999;">—</span> |
+| 56 | gh.meali.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 57 | gg.z321.cc.cd | — | — | 超时 | <span style="color:#999;">—</span> |
+| 58 | js.jiangss.shop | — | — | 超时 | <span style="color:#999;">—</span> |
+| 59 | github.ikgy.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 60 | 777.z321.cc.cd | — | — | 超时 | <span style="color:#999;">—</span> |
+| 61 | g.z321.cc.cd | — | — | 超时 | <span style="color:#999;">—</span> |
+| 62 | cfgh.ikgy.top | — | — | 超时 | <span style="color:#999;">—</span> |
+| 63 | github.nswrz.cn | — | — | 超时 | <span style="color:#999;">—</span> |
+| 64 | gh.qfmc0721.cc.cd | — | — | 超时 | <span style="color:#999;">—</span> |
+| 65 | proxy.yaoyaoling.net | — | — | 超时 | <span style="color:#999;">—</span> |
+| 66 | gh.ruan.dpdns.org | — | — | 超时 | <span style="color:#999;">—</span> |
