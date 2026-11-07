@@ -1,34 +1,32 @@
-name: 自动更新GitHub镜像测速表
+name: 自动更新镜像表到Issue
 
 on:
   schedule:
+    # UTC 2:00 / 14:00 = 北京时间 10:00 / 22:00
     - cron: '0 2,14 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write
   issues: write
 
 jobs:
-  update-mirrors:
+  update-issue-mirrors:
     runs-on: ubuntu-latest
     steps:
-      - name: 检出仓库代码
-        uses: actions/checkout@v4
-
-      - name: 拉取接口数据并生成 Markdown
-        id: generate
+      - name: 拉取数据并更新Issue正文
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const { execSync } = require('child_process');
             const API_URL = 'https://hiwiki.org/data/mirror-speeds.json';
+            // 修改为你的目标 Issue 编号
+            const ISSUE_NUMBER = 14;
 
+            // 1. 拉取接口数据
             const res = await fetch(API_URL);
             if (!res.ok) throw new Error('接口请求失败: ' + res.status);
             const data = await res.json();
 
+            // 2. 格式化北京时间
             const updateTime = new Date(data.updatedAt).toLocaleString('zh-CN', {
               timeZone: 'Asia/Shanghai',
               year: 'numeric',
@@ -39,18 +37,21 @@ jobs:
               second: '2-digit'
             });
 
+            // 3. 状态映射
             const statusMap = {
               ok: '正常',
               error: '超时',
               '404': '不支持'
             };
 
+            // 4. 数据排序：正常在前（速度降序），异常在后
             const okList = data.mirrors
               .filter(item => item.status === 'ok')
               .sort((a, b) => b.speed - a.speed);
             const errorList = data.mirrors.filter(item => item.status !== 'ok');
             const fullList = [...okList, ...errorList];
 
+            // 5. 生成表格行
             const tableRows = fullList.map((item, index) => {
               const latency = item.latency != null ? item.latency : '—';
               const speed = item.speed != null ? item.speed.toFixed(2) : '—';
@@ -58,44 +59,26 @@ jobs:
               return '| ' + (index + 1) + ' | ' + item.label + ' | ' + latency + ' | ' + speed + ' | ' + status + ' |';
             }).join('\n');
 
-            const markdown = '### GitHub 镜像源测速表\n> 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：' + updateTime + '\n\n| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |\n| :---: | --- | :---: | :---: | :---: |\n' + tableRows + '\n';
+            // 6. 拼接完整 Markdown 内容
+            const newContent = '### GitHub 镜像源测速表\n> 数据自动同步自 hiwiki 镜像接口，每12小时自动更新，最后更新时间：' + updateTime + '\n\n| 序号 | 镜像地址 | 延迟（ms） | 下载速度（MB/s） | 状态 |\n| :---: | --- | :---: | :---: | :---: |\n' + tableRows + '\n';
 
-            fs.writeFileSync('mirrors.md', markdown);
-            console.log('镜像表已生成到 mirrors.md');
+            // 7. 获取当前Issue正文，对比是否有变化
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ISSUE_NUMBER
+            });
 
-            // 修复：用 git status 同时检测新增文件和修改
-            const gitStatus = execSync('git status --porcelain mirrors.md').toString().trim();
-            let changed = !!gitStatus;
-            
-            if (!changed) {
-              console.log('数据无变化，跳过后续提交');
-            } else {
-              console.log('检测到文件变更，将执行提交');
+            if (issue.body.trim() === newContent.trim()) {
+              console.log('数据无变化，跳过Issue更新');
+              return;
             }
-            
-            core.setOutput('changed', String(changed));
 
-      - name: 提交并推送到仓库
-        if: steps.generate.outputs.changed == 'true'
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add mirrors.md
-          git commit -m "自动更新镜像测速表"
-          git push
-
-      - name: 同步更新指定 Issue 正文
-        if: steps.generate.outputs.changed == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const content = fs.readFileSync('mirrors.md', 'utf8');
-            const ISSUE_NUMBER = 14;
+            // 8. 更新Issue正文
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ISSUE_NUMBER,
-              body: content
+              body: newContent
             });
-            console.log('Issue #' + ISSUE_NUMBER + ' 正文已同步更新');
+            console.log('Issue #' + ISSUE_NUMBER + ' 正文已更新完成');
