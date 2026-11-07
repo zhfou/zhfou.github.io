@@ -63,14 +63,16 @@ jobs:
             fs.writeFileSync('mirrors.md', markdown);
             console.log('镜像表已生成到 mirrors.md');
 
-            let changed = true;
-            try {
-              execSync('git diff --quiet mirrors.md');
-              changed = false;
+            // 修复：用 git status 同时检测新增文件和修改
+            const gitStatus = execSync('git status --porcelain mirrors.md').toString().trim();
+            let changed = !!gitStatus;
+            
+            if (!changed) {
               console.log('数据无变化，跳过后续提交');
-            } catch (e) {
-              changed = true;
+            } else {
+              console.log('检测到文件变更，将执行提交');
             }
+            
             core.setOutput('changed', String(changed));
 
       - name: 提交并推送到仓库
