@@ -12,69 +12,69 @@
 
 | ID | 镜像 | 延迟 | 速度 | 状态 |
 |:---:|:---:|:---:|:---:|:---:|
-| 1 | gh.monlor.com | 155 ms | 26.98 MB/s | 正常 |
-| 2 | fastgit.cc | 156 ms | 19.83 MB/s | 正常 |
-| 3 | gh-proxy.com | 116 ms | 18.90 MB/s | 正常 |
-| 4 | gh.acmsz.top | 571 ms | 18.02 MB/s | 正常 |
-| 5 | ghproxy.imciel.com | 151 ms | 17.75 MB/s | 正常 |
-| 6 | xsadwsd.kdns.fr | 249 ms | 17.21 MB/s | 正常 |
-| 7 | down.mxw.qzz.io | 992 ms | 16.97 MB/s | 正常 |
-| 8 | down.mxw.xx.kg | 347 ms | 16.71 MB/s | 正常 |
-| 9 | ghproxy.felicity.land | 514 ms | 14.92 MB/s | 正常 |
-| 10 | github.tbap.top | 717 ms | 11.82 MB/s | 正常 |
-| 11 | cdn.akaere.online | 208 ms | 10.72 MB/s | 正常 |
-| 12 | gh.07150721.xyz | 385 ms | 10.67 MB/s | 正常 |
-| 13 | tvv.tw | 253 ms | 10.20 MB/s | 正常 |
-| 14 | gh.my-website.ccwu.cc | 431 ms | 9.02 MB/s | 正常 |
-| 15 | cdn.gh-proxy.com | 636 ms | 6.70 MB/s | 正常 |
-| 16 | gh.noki.icu | 393 ms | 4.92 MB/s | 正常 |
-| 17 | gh.sixyin.com | 874 ms | 3.83 MB/s | 正常 |
-| 18 | ghfast.top | 690 ms | 2.58 MB/s | 正常 |
-| 19 | free.cn.eu.org | 1157 ms | 1.83 MB/s | 正常 |
-| 20 | github.ednovas.xyz | 749 ms | 1.73 MB/s | 正常 |
-| 21 | github.chenc.dev | 1698 ms | 0.92 MB/s | 正常 |
-| 22 | gh.dpik.top | 646 ms | 0.66 MB/s | 正常 |
-| 23 | git.669966.xyz | 1898 ms | 0.64 MB/s | 正常 |
-| 24 | git.yylx.win | 944 ms | 0.62 MB/s | 正常 |
-| 25 | ghproxy.monkeyray.net | 4301 ms | 0.53 MB/s | 正常 |
-| 26 | ghproxy.net | 2028 ms | 0.38 MB/s | 正常 |
-| 27 | github.xxlab.tech | 1211 ms | 0.12 MB/s | 正常 |
-| 28 | g.blfrp.cn | 7071 ms | 0.02 MB/s | 正常 |
-| 29 | gh.bugdey.us.kg | — | — | 超时 |
+| 1 | gh-proxy.com | 92 ms | 36.38 MB/s | 正常 |
+| 2 | gh.monlor.com | 268 ms | 26.28 MB/s | 正常 |
+| 3 | tvv.tw | 262 ms | 18.86 MB/s | 正常 |
+| 4 | ghproxy.felicity.land | 364 ms | 18.81 MB/s | 正常 |
+| 5 | ghproxy.imciel.com | 159 ms | 18.12 MB/s | 正常 |
+| 6 | ghfast.top | 397 ms | 17.15 MB/s | 正常 |
+| 7 | gh.07150721.xyz | 448 ms | 17.04 MB/s | 正常 |
+| 8 | gh.my-website.ccwu.cc | 302 ms | 15.40 MB/s | 正常 |
+| 9 | git.yylx.win | 428 ms | 13.77 MB/s | 正常 |
+| 10 | fastgit.cc | 475 ms | 13.36 MB/s | 正常 |
+| 11 | cdn.gh-proxy.com | 443 ms | 13.35 MB/s | 正常 |
+| 12 | g.z321.cc.cd | 140 ms | 9.69 MB/s | 正常 |
+| 13 | gh.acmsz.top | 882 ms | 8.24 MB/s | 正常 |
+| 14 | xsadwsd.kdns.fr | 280 ms | 8.24 MB/s | 正常 |
+| 15 | 777.z321.cc.cd | 140 ms | 8.14 MB/s | 正常 |
+| 16 | cdn.akaere.online | 298 ms | 8.03 MB/s | 正常 |
+| 17 | down.mxw.xx.kg | 461 ms | 7.93 MB/s | 正常 |
+| 18 | gg.z321.cc.cd | 153 ms | 6.97 MB/s | 正常 |
+| 19 | github.tbap.top | 527 ms | 2.95 MB/s | 正常 |
+| 20 | github.ednovas.xyz | 504 ms | 2.23 MB/s | 正常 |
+| 21 | gh.sixyin.com | 1632 ms | 1.91 MB/s | 正常 |
+| 22 | github.chenc.dev | 1316 ms | 1.26 MB/s | 正常 |
+| 23 | free.cn.eu.org | 1753 ms | 1.16 MB/s | 正常 |
+| 24 | gh.noki.icu | 559 ms | 0.92 MB/s | 正常 |
+| 25 | ghproxy.net | 1510 ms | 0.38 MB/s | 正常 |
+| 26 | gh.dpik.top | 807 ms | 0.35 MB/s | 正常 |
+| 27 | g.blfrp.cn | 1183 ms | 0.06 MB/s | 正常 |
+| 28 | github.xxlab.tech | 7456 ms | 0.05 MB/s | 正常 |
+| 29 | jiashu.1win.eu.org | — | — | 超时 |
 | 30 | ghfile.geekertao.top | — | — | 超时 |
 | 31 | github-proxy.memory-echoes.cn | — | — | 超时 |
-| 32 | jiashu.1win.eu.org | — | — | 超时 |
+| 32 | gh.bugdey.us.kg | — | — | 超时 |
 | 33 | github.mxw.qzz.io | — | — | 超时 |
 | 34 | github.dpik.top | — | — | 超时 |
-| 35 | gh.927223.xyz | — | — | 超时 |
-| 36 | gh.inkchills.cn | — | — | 超时 |
-| 37 | gitproxy.mrhjx.cn | — | — | 超时 |
-| 38 | gh.felicity.ac.cn | — | — | 超时 |
-| 39 | gh.ddlc.top | — | — | 超时 |
-| 40 | gitproxy.127731.xyz | — | — | 超时 |
+| 35 | gh.inkchills.cn | — | — | 超时 |
+| 36 | gh.felicity.ac.cn | — | — | 超时 |
+| 37 | gh.927223.xyz | — | — | 超时 |
+| 38 | gh.ddlc.top | — | — | 超时 |
+| 39 | gitproxy.mrhjx.cn | — | — | 超时 |
+| 40 | down.mxw.qzz.io | — | — | 超时 |
 | 41 | gh.catmak.name | — | — | 超时 |
-| 42 | ghf.xn--eqrr82bzpe.top | — | — | 超时 |
-| 43 | gh.b52m.cn | — | — | 超时 |
-| 44 | ghm.078465.xyz | — | — | 超时 |
-| 45 | ghpxy.hwinzniej.top | — | — | 超时 |
-| 46 | gh.jasonzeng.dev | — | — | 超时 |
-| 47 | gp.zkitefly.eu.org | — | — | 超时 |
+| 42 | gitproxy.127731.xyz | — | — | 超时 |
+| 43 | ghm.078465.xyz | — | — | 超时 |
+| 44 | ghf.xn--eqrr82bzpe.top | — | — | 超时 |
+| 45 | gh.b52m.cn | — | — | 超时 |
+| 46 | ghpxy.hwinzniej.top | — | — | 超时 |
+| 47 | gh.jasonzeng.dev | — | — | 超时 |
 | 48 | github.geekery.cn | — | — | 超时 |
-| 49 | ghproxy.1888866.xyz | — | — | 超时 |
-| 50 | ghproxy.cxkpro.top | — | — | 超时 |
-| 51 | ghp.arslantu.xyz | — | — | 超时 |
-| 52 | gh.idayer.com | — | — | 超时 |
-| 53 | gh.chjina.com | — | — | 超时 |
-| 54 | ghp.keleyaa.com | — | — | 超时 |
-| 55 | githubdog.com | — | — | 超时 |
-| 56 | gh.meali.top | — | — | 超时 |
-| 57 | gg.z321.cc.cd | — | — | 超时 |
-| 58 | js.jiangss.shop | — | — | 超时 |
-| 59 | github.ikgy.top | — | — | 超时 |
-| 60 | 777.z321.cc.cd | — | — | 超时 |
-| 61 | g.z321.cc.cd | — | — | 超时 |
-| 62 | cfgh.ikgy.top | — | — | 超时 |
+| 49 | gp.zkitefly.eu.org | — | — | 超时 |
+| 50 | ghproxy.1888866.xyz | — | — | 超时 |
+| 51 | ghproxy.cxkpro.top | — | — | 超时 |
+| 52 | ghp.arslantu.xyz | — | — | 超时 |
+| 53 | gh.idayer.com | — | — | 超时 |
+| 54 | git.669966.xyz | — | — | 超时 |
+| 55 | gh.chjina.com | — | — | 超时 |
+| 56 | ghp.keleyaa.com | — | — | 超时 |
+| 57 | githubdog.com | — | — | 超时 |
+| 58 | gh.meali.top | — | — | 超时 |
+| 59 | js.jiangss.shop | — | — | 超时 |
+| 60 | github.ikgy.top | — | — | 超时 |
+| 61 | cfgh.ikgy.top | — | — | 超时 |
+| 62 | gh.qfmc0721.cc.cd | — | — | 超时 |
 | 63 | github.nswrz.cn | — | — | 超时 |
-| 64 | gh.qfmc0721.cc.cd | — | — | 超时 |
-| 65 | proxy.yaoyaoling.net | — | — | 超时 |
-| 66 | gh.ruan.dpdns.org | — | — | 超时 |
+| 64 | proxy.yaoyaoling.net | — | — | 超时 |
+| 65 | gh.ruan.dpdns.org | — | — | 超时 |
+| 66 | ghproxy.monkeyray.net | — | — | 超时 |
